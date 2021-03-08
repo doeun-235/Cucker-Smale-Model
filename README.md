@@ -13,3 +13,7 @@ In this repository, I did simulations aobut Cucker-Smale model and it's extensio
 
 
 <img src="https://latex.codecogs.com/png.latex?\fn_cm&space;\sigma&plus;1&space;=&space;\sum_{i=0}^N&space;\bar{x}^i">
+
+hello
+
+<img src="https://latex.codecogs.com/png.latex?\int_0^{\infty}f_i dx =\delta">
