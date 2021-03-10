@@ -4,7 +4,7 @@ In this repository, I did simulations aobut Cucker-Smale model and it's extensio
 
 In 'ODE', there are simulation codes for soliving ODE Models, e.g. Cucker-Smale model, Cucker-Smale model with decentralized formation controller(hereafter 'formation control model') in (CKPP19), and formation control model on a more general graphs. 
 
-Let &nbsp; <img src="https://latex.codecogs.com/png.latex?\fn_cm&space;x_i,&space;v_i&space;\in&space;\mathbb{R}^d" title="x_i, v_i \in \mathbb{R}^d" /> are the position and velocity of the &nbsp; <img src="https://latex.codecogs.com/png.latex?\fn_cm&space;i" title="i" />-th agent at time &nbsp; <img src="https://latex.codecogs.com/png.latex?\dpi{400}&space;\fn_cm&space;\small&space;t&space;\geq&space;0" title="\small t \geq 0" />.
+Let &nbsp; <img src="https://latex.codecogs.com/png.latex?\fn_cm&space;x_i,&space;v_i&space;\in&space;\mathbb{R}^d" title="x_i, v_i \in \mathbb{R}^d" /> are the position and velocity of the &nbsp; <img src="https://latex.codecogs.com/png.latex?\fn_cm&space;i" title="i" />-th agent at time &nbsp; <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;\small&space;t&space;\geq&space;0" title="\small t \geq 0" />.
  
 
 
