@@ -4,11 +4,11 @@ In this repository, I did simulations about Cucker-Smale model and it's extensio
 
 In 'ODE', there are simulation codes for soliving ODE Models, e.g. Cucker-Smale model, Cucker-Smale model with decentralized formation controller(hereafter 'formation control model') in (CKPP19), and formation control model on a more general graphs. 
 
-Let &nbsp;<img src="https://latex.codecogs.com/svg.latex?\inline&space;\fn_cm&space;\small&space;x_i,&space;v_i&space;\in&space;\mathbb{R}^d" title="\small x_i, v_i \in \mathbb{R}^d" /> are the position and velocity of the &nbsp;<img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;i" title="i" /> -th agent at time <img src="https://latex.codecogs.com/svg.latex?\fn_cm&space;\small&space;t&space;\geq&space;0" title="\small t \geq 0" /> .
+Let &nbsp;<img src="https://latex.codecogs.com/svg.latex?\inline&space;\fn_cm&space;x_i,&space;v_i&space;\in&space;\mathbb{R}^d" title="x_i, v_i \in \mathbb{R}^d" /> are the position and velocity of the &nbsp;<img src="https://latex.codecogs.com/svg.latex?\inline&space;\fn_cm&space;i" title="i" /> -th agent at time <img src="https://latex.codecogs.com/svg.latex?\inline&space;\fn_cm&space;t&space;\geq&space;0" title="\small t \geq 0" /> .
  
 
 
- ![equation](https://latex.codecogs.com/png.latex?\fn_cm&space;\sigma&plus;1&space;=&space;\sum_{i=0}^N&space;\bar{x}^i)
+ ![equation](https://latex.codecogs.com/svg.latex?\fn_cm&space;\sigma&plus;1&space;=&space;\sum_{i=0}^N&space;\bar{x}^i)
 
 im fine thank you 
 
