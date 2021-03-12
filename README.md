@@ -17,7 +17,7 @@ More specific instructions are in each directory.
 1. [CS07][(CS07)] : Felipe Cucker and Steve Smale. Emergent behavior in flocks. IEEE Transactions
 on Automatic Control, 52(5):852–862, 2007.
 
-2. [O21][(O21)] : Tackgeun Oh, Flocking Behacior in Stochastic Cucker-Smale Model with Formation Control on Symmetric Digraphs, Yonsei Univ., 2021.
+2. [O21][(O21)] : Tackgeun Oh, Flocking Behavior in Stochastic Cucker-Smale Model with Formation Control on Symmetric Digraphs, Yonsei Univ., 2021.
 / ( I changed my name from 'Tackgeun Oh' to 'Doeun Oh'. )
 
 3. [CKPP19][(CKPP19)] : Young-Pil Choi, Dante Kalise, Jan Peszek, and Andrés A. Peters. A collisionless
