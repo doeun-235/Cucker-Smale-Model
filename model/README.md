@@ -1,6 +1,8 @@
 ## Model
 In the codes, we deal with 4 models; Cucker-Smale model, the model introduced in [[3]][(CKPP19)] and its extension for more general networks, and the model introduced in [[2]][(O21)]. The first three of them are systems of ordinary differential equation and the last one is a system of stochastic differential equation.
 
+$a_i$
+
 ```c
 void main
 ```
