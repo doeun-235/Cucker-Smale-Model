@@ -1,5 +1,7 @@
 # Simulations for Cucker-Smale-Model and Its Extensions
 
+## Introduction
+
 In this repository, I did simulations about the Cucker-Smale model [[1]][(CS07)], second-order-nonlinear ODEs describing the flocking behaviors, and its extensions. Mostly, the works have been done for writing my master's degree thesis; [[2]][(O21)].
 
 In the directory named 'model', there are two directories, 'ODE' and 'SDE'. In the directory 'ODE', there are simulation codes for solving ODE systems, Cucker-Smale model, Cucker-Smale model with decentralized formation control term in [[3]][(CKPP19)], and an extension of the model in [[3]][(CKPP19)] on more general graphs. In the directory 'SDE', there are simulation codes for solving the SDE system introduced in [[2]][(O21)], which has a formation controller and multiplicative noises.
