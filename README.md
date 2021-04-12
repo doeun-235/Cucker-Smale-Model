@@ -26,16 +26,19 @@ On my git-hub page, instructions are focused on numerical and coding parts, so i
 
 <p align="center">
   <img src= "/figure/csm-ode45-simu-final.gif" width="95%">
+  
   Fig. 1
 </p>
 
 <p align="center">
   <img src= "/figure/thesis_figure/einstein/graph_ein-3.png" width="80%">
+  
   Fig. 2
 </p>
 
 <p align="center">
   <img src= "/figure/thesis_figure/einstein/scs-em.v.1.8-simu-einstein.gif" width="90%">
+  
   Fig. 3
 </p>
 
