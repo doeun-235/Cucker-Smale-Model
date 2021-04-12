@@ -25,7 +25,7 @@ On my git-hub page, instructions are focused on numerical and coding parts, so i
 ## Simple Instruction for Models with Numerical Results
 
 <p align="center">
-  <img src= "/figure/csm-ode45-simu-final.gif" width="80%">
+  <img src= "/figure/csm-ode45-simu-final.gif" width="95%">
   Fig. 1
 </p>
 
@@ -35,7 +35,7 @@ On my git-hub page, instructions are focused on numerical and coding parts, so i
 </p>
 
 <p align="center">
-  <img src= "/figure/thesis_figure/einstein/scs-em.v.1.8-simu-einstein.gif" width="80%">
+  <img src= "/figure/thesis_figure/einstein/scs-em.v.1.8-simu-einstein.gif" width="90%">
   Fig. 3
 </p>
 
