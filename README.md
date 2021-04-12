@@ -10,7 +10,20 @@ The main goals of codes in directories 'ODE' and 'SDE' are simulating ODE and SD
 
 Also, I made a code in the directory 'etc' for visualizing networks and it is used for writing [[2]][(O21)]. In the directory 'figure', there are video files and plots made by the codes. Aimed patterns through simulations were <img src="https://latex.codecogs.com/svg.latex?\inline&space;\fn_cm&space;\pi" title="\pi" /> shaped pattern and Einstein's face image pattern. I get the curve equations for the shapes from https://wolframalpha.com.
 
-More specific instructions are in each directory.
+On my git-hub page, instructions are focused on numerical and coding parts, so if you want to get mathematical information, I recommend you reading my thesis paper; [[2]][(O21)]. More specific instructions for how I made plots will be written in the directory 'figure' and instruction of numerical methods for solving ODE and SDE will be written in the directory 'model'.
+
+## Simple Instruction about Models and Numerical Results
+
+![figure1](/figure/csm-ode45-simu-final.gif)
+*Fig. 1*
+
+![figure1](/figure/thesis_figure/einstein/graph_ein-3.png)
+*Fig. 2*
+
+![figure2](/figure/thesis_figure/einstein/scs-em.v.1.8-simu-einstein.gif)
+*Fig. 3*
+
+
 
 ## Bibliography
 
