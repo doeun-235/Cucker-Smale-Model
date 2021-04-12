@@ -1,5 +1,15 @@
 # Simulations for Cucker-Smale-Model and Its Extensions
 
+## Table of Contents
+* [Introduction](#introduction)
+
+* [Simple Instruction for Models with Numerical Results](#simple-instruction-for-models-with-numerical-results)
+
+* [Bibliography](#bibliography)
+
+* [License](#license)
+
+
 ## Introduction
 
 In this repository, I did simulations about the Cucker-Smale model [[1]][(CS07)], second-order-nonlinear ODEs describing the flocking behaviors, and its extensions. Mostly, the works have been done for writing my master's degree thesis; [[2]][(O21)].
@@ -12,7 +22,7 @@ Also, I made a code in the directory 'etc' for visualizing networks and it is us
 
 On my git-hub page, instructions are focused on numerical and coding parts, so if you want to get mathematical information, I recommend you reading my thesis paper; [[2]][(O21)]. More specific instructions for how I made plots will be written in the directory 'figure' and instruction of numerical methods for solving ODE and SDE will be written in the directory 'model'.
 
-## Simple Instruction about Models and Numerical Results
+## Simple Instruction for Models with Numerical Results
 
 ![figure1](/figure/csm-ode45-simu-final.gif)
 *Fig. 1*
