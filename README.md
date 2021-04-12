@@ -1,6 +1,6 @@
 # Simulations for Cucker-Smale-Model and Its Extensions
 
-## Table of Contents
+## Contents
 * [Introduction](#introduction)
 
 * [Simple Instruction for Models with Numerical Results](#simple-instruction-for-models-with-numerical-results)
@@ -24,15 +24,20 @@ On my git-hub page, instructions are focused on numerical and coding parts, so i
 
 ## Simple Instruction for Models with Numerical Results
 
-![figure1](/figure/csm-ode45-simu-final.gif)
-*Fig. 1*
+<p align="center">
+  <img src= "/figure/csm-ode45-simu-final.gif" width="80%">
+  Fig. 1
+</p>
 
-![figure1](/figure/thesis_figure/einstein/graph_ein-3.png)
-*Fig. 2*
+<p align="center">
+  <img src= "/figure/thesis_figure/einstein/graph_ein-3.png" width="80%">
+  Fig. 2
+</p>
 
-![figure2](/figure/thesis_figure/einstein/scs-em.v.1.8-simu-einstein.gif)
-*Fig. 3*
-
+<p align="center">
+  <img src= "/figure/thesis_figure/einstein/scs-em.v.1.8-simu-einstein.gif" width="80%">
+  Fig. 3
+</p>
 
 
 ## Bibliography
