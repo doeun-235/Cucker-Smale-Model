@@ -12,496 +12,279 @@ from IPython.display import HTML
 from matplotlib.ticker import ScalarFormatter
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import MaxNLocator
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
-import matplotlib.patches as mpatches
-from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, TransformedBbox,BboxPatch, BboxConnector)
-from matplotlib.ticker import ScalarFormatter, FormatStrFormatter
 
 import os
 import glob
 import pandas as pd
 
+#Below notes written by korean are not concern about essential parts sof this code.
+#Almost of them are what I've learned about python libraries during developing this code.
+#And I thought they are minor about solving DE, so I didn't translated it.
 
 #np 참고 http://taewan.kim/post/numpy_cheat_sheet/
 
-def sto_ratio(start,end,below):
-    if np.min(Vcum[1:,start:end,0,0]) >= below :
-        ratio = abs(np.max(np.max(Vcum[1:,start:end,0,0],axis=0)-np.min(Vcum[1:,start:end,0,0],axis=0))/(np.max(Vcum[1:,start:end,0,0])-np.min(Vcum[1:,start:end,0,0])))
-    else :
-        ratio=0
-    return ratio
-
 def makeplot():
 
-    global fig
+    fig=plt.figure(constrained_layout=True)
+    spec=gridspec.GridSpec(ncols=20,nrows=40,figure=fig)
 
-    # fig=plt.figure(constrained_layout=True,figsize=(10,5))
-    # spec=gridspec.GridSpec(ncols=9,nrows=6,figure=fig)
-    # ax=fig.add_subplot(spec[0:3,0:4])
-    # bx=fig.add_subplot(spec[0:3,4:8])
-    # bx_larged=fig.add_subplot(spec[0:3,8])
+    ax=fig.add_subplot(spec[1:-1,0:9])
+    #0부터 시작하면 공간이 부족해서 usewarning나오고, 1부터 시작하면 cx_up, cx_down 사이 간격이 너무 벌어짐
+    dx=fig.add_subplot(spec[:,14:19])
 
-    # dx=fig.add_subplot(spec[3:,6:])
+    ## plotting move of the particles
+
+    ##choosing frame length
+
+    #그림을 어떻게 그릴지 : (Xmax-Xmin)+(Ymax-Ymin)이 제일 클 때 까지는 개중에 Xinf~Xsup,Yinf~Ysup으로
+    #-> 뭔가 사이즈는 limsup같은 느낌으로 하고 중앙점은 움직임 따라가는 식으로 할 수 있을 것 같은데
+    # 프레임 사이즈가 큰 차이 안나면 고정으로 가야지 덜 어지러울 듯.
+
+    # X,Y차이값이 max일때 까지는 scale 유지하는 것으로.
+
+    global limT
+    limT=np.argmax(Pdiff)
+    #np.argmax(np.amax(np.amax(P,axis=1)-np.amin(P,axis=1),axis=1)) 로도 찾을 수 있지만 이미 for 돌리기도 했고 len구해야 하기 때문에 걍 Pdiff 만듦
+    #근데 어차피 매번 Xmin Ymin 구할거면 것도 걍 미리 구해놓지? 이건 지금 바꾸는건 귀찮아 나중에.
+      
+    print(limT)
+    #즉 limT까지는 축 고정하고 그 이후로는 원래는 scale 고정하려고 했는데 의미 불분명하니 걍 scale decreasing 하게 잡는 것으로
+
+    Xmax = np.max(P[:limT+1,:,0])
+    Ymax = np.max(P[:limT+1,:,1])
+    Xmin = np.min(P[:limT+1,:,0])
+    Ymin = np.min(P[:limT+1,:,1])
+
+    CenterX = (Xmin+Xmax)/2
+    CenterY = (Ymin+Ymax)/2
+
+    global xylen
+    xylen=np.nan_to_num(max(Xmax-Xmin,Ymax-Ymin))
+
+    if xylen >= 10*Pdiff[limT] or limT >= T*0.3+100:
+        xylen=Pdiff[0]
+        limT=0
+        Xmin=np.min(P[0,:,0])
+        Ymin=np.min(P[0,:,1])
+
+    ax.set_xlim([np.nan_to_num(CenterX-xylen/2*1.15),np.nan_to_num(CenterX+xylen/2*1.15)])
+    ax.set_ylim([np.nan_to_num(CenterY-xylen/2*1.15),np.nan_to_num(CenterY+xylen/2*1.15)])
+    ax.set_aspect('equal')
+
+    ax.set_title(r'$K=%.2f,M=%.2f,\sigma=%.6f$'%(K,M,L)+'\n'+r'$\alpha=%.3f,\beta=%.3f$'%(alpha,beta)+'\n'+r'$\psi^{min}=%.2f,\phi^{min}=%.2f$' %(psLB,phLB),fontsize=8)
+    ax.set_xlabel(r'$\Delta t=%.5f, step:%d, time=%.5f$'%(h,0,0)+'\n(frame_length)=%.3f\n' %xylen+r'$v_0^{ave}=(%.3f,%.3f)$'%(Vimean[0],Vimean[1])+', '+r'$v_t^{ave}=(%.6f,%.6f)$' %(np.mean(V[i,:,0]),np.mean(V[i,:,1])),fontsize=8)
+
+    dotsize=600/len(Domain)
+
+    global dotcolors
+    global dotcmap
+
+    dotcolors=0
+    if dotcolors==1:
+        dotc=Domain
+        dotcmap='twilight_shifted'
+    elif dotcolors==2:
+        dotc=-Domain
+        dotcmap='nipy_spectral'
+    elif dotcolors==0:
+        dotc='tab:blue'
+        dotcmap='nipy_spectral'
 
 
-    ## plot1 : graph of (v_t^1)_1 ... (v_t^n)_1 on trial =1
-    fig_size=(5.1,3.4)
-    fig=plt.figure(figsize=fig_size)
+    scat=ax.scatter(P[0].T[0], P[0].T[1],s=dotsize,c=dotc, cmap=dotcmap) #P[0].T[1] = (transpose of P[0])[1]. cmap=따라 컬러 스펙트럼 바뀜
+    scat.set_alpha(0.6)
+    qax=ax.quiver(P[0].T[0],P[0].T[1],nV[0].T[0],nV[0].T[1],angles='xy',width=0.001,scale=70/2)
 
-    plt.plot(np.array(range(0,T))*h,[0 for tt in range(T)],linewidth=0.8,c='k')
+    ##plotting Vnrm
 
-    for i in range(N):
-        plt.plot(np.array(range(0,T))*h,Vcum[1,:,i,0],alpha=0.6,linewidth=0.3)
+    SupVnrm=np.max(Vnrm)
 
-    axes = plt.axes()
-    axes.set_xlim(right=(T-2)*h,left=0)
+    graphcut=0
 
-    axes.set_xlabel('t')
-    axes.set_ylabel('velocity',rotation=90)
+    if graphcut==0 :
+        cx=fig.add_subplot(spec[:,9:14]) 
+        cx.set_title(r'$\Vert {\bf v}_t \Vert $')
+        # cx.set_yscale('log')
+        cx.plot(np.arange(0,T)*h,np.zeros(T),c='k',linewidth=0.8)
 
-    saveplot(1,plotsave)
+        cx.plot(np.arange(0,T)*h,Vnrm,linewidth=0.7, c='teal', label=r'$\Vert {\bf v}_t \Vert $')
+        cx.plot(np.arange(0,T)*h,[E0 for tt in range(T)],linewidth=0.5,c='gold',label=r'$E_0$')
+        cx.plot(np.arange(0,T)*h,phE+Vnrm,linewidth=0.5,c='indianred',label=r'$E_t$')
+        cx.plot(np.arange(0,T)*h,E0-phE, alpha=0.8,linewidth=0.5,c='forestgreen',label=r'$E_0-E_t^{\phi}$')
+        
+        cx.set_xlim(0,(T-2)*h)
+        cx.legend(loc='best',fontsize=5)
 
-
-    ## plot2 : graph of (v_t^1)_1 on all trial
-    fig=plt.figure(figsize=fig_size)
-
-    ## plot 안에 그래프 그리기 : inset_axes,mark_inset/https://data-newbie.tistory.com/447
-    axes=plt.axes()
-
-    plt.plot(np.array(range(0,T))*h,[0 for tt in range(T)],linewidth=0.8,c='k')
-
-    for i in range(Trial) :
-        plt.plot(np.array(range(0,T))*h,Vcum[i+1,:,0,0],linewidth=0.3, alpha=0.6)
-
-    axes.set_xlim(right=(T-2)*h,left=0)
-
-    ax_max=max(np.max(Vcum[1:,:,0,0]),-1*np.min(Vcum[1:,:,0,0]))
-    if np.max(Vcum[1:,:,0,0]) > (-1)*np.min(Vcum[1:,:,0,0]):
-        # ax_cut=int(np.median(np.argmax(Vcum[1:,:,0,0],axis=1)))
-        cut_sign=1
-        plotlen=abs(np.min(Vcum[1:,:,0,0]))/(abs(np.max(Vcum[1:,:,0,0]))+abs(np.min(Vcum[1:,:,0,0])))
+        reddot, =cx.plot([0],[Vnrm[0]],'r.') #왠지 모르겠는데 reddot뒤의 ,을 빼면 animation 부분에서 에러남. 
 
     else :
-        # ax_cut=int(np.median(np.argmin(Vcum[1:,:,0,0],axis=1)))
-        cut_sign=-1
-        plotlen=abs(np.max(Vcum[1:,:,0,0]))/(abs(np.max(Vcum[1:,:,0,0]))+abs(np.min(Vcum[1:,:,0,0])))
 
-    # ax_ycut=np.max(Vcum[1:,ax_cut,0,0])
-    # ax_ycut2=np.min(Vcum[1:,ax_cut,0,0])
+        cx_up=fig.add_subplot(spec[0:4,9:14]) 
+        cx_down=fig.add_subplot(spec[4:,9:14])
 
-    # # print(np.argmax(Vcum[1:,:,0,0],axis=1))
-    # # print(Vcum[1,:,0,0])
-    # # print(Vcum[2,:,0,0])
-    # # print(Vcum[3,:,0,0])
-
-    # print("ax_ycut : %f" %ax_ycut)
-    # print("ax_ycut2 : %f" %ax_ycut2)
-
-    # lar_len=min(12*(ax_ycut-ax_ycut2),abs(ax_ycut)*0.3)
-    # cutunit=3
-    # print("ax_cut : %d" %ax_cut)
-    # print("lar_len : %.2f" %lar_len)
-
-    # # select=0
-    # # bounded_l=ax_cut
-    # # bounded_r=T-1
-    # # ccut=ax_cut*3+50
-    # # while select==0 :
-    # #     if cut_sign*(ax_ycut-np.mean(Vcum[:,ccut,0,0]))>lar_len :
-    # #         bounded_r=ccut
-    # #         ccut=int((bounded_l+ccut)/2)
-    # #     if cut_sign*(ax_ycut-np.mean(Vcum[:,ccut,0,0]))<lar_len :
-    # #         bounded_l=ccut
-    # #         ccut=int((bounded_r+ccut)/2)
-
-    # #     if bounded_r-bounded_l<cutunit:
-    # #         select=1            
-
-    # # ax_rightcut=min(int(ax_cut*4),bounded_r+1)
-
-    # # print("bound l : %d" %bounded_l)
-    # # print("bound r : %d" %bounded_r)
-    # # print("ax_rightcut : %d" %ax_rightcut)
-
-    # # select=0
-    # # bounded_l=0
-    # # bounded_r=ax_cut
-    # # ccut=int(ax_cut*0.5)
-    # # while select==0 :
-    # #     if cut_sign*(ax_ycut-np.mean(Vcum[:,ccut,0,0]))>lar_len :
-    # #         bounded_l=ccut
-    # #         ccut=int((bounded_r+ccut)/2)
-    # #     if cut_sign*(ax_ycut-np.mean(Vcum[:,ccut,0,0]))<lar_len :
-    # #         bounded_r=ccut
-    # #         ccut=int((bounded_l+ccut)/2)
-
-    # #     if bounded_r-bounded_l<cutunit:
-    # #         select=1            
-
-    # # ax_leftcut=max(bounded_l,int(ax_cut-(ax_rightcut-ax_cut)),0)
-
-    # # print("bound l : %d" %bounded_l)
-    # # print("bound r : %d" %bounded_r)
-    # # print("ax_leftcut : %d" %ax_leftcut)
-
-    below=0.1
-    if T>900 :
-        enlarge_len=6
-    else :
-        enlarge_len=3
-    
-    I_start=range(0,T-enlarge_len)
-    ratio=np.zeros(T-enlarge_len)
-
-    for i in I_start:
-        ratio[i] = sto_ratio(i,i+enlarge_len,below*ax_max)
-
-    ax_leftcut=np.argmax(ratio)
-    ax_rightcut=ax_leftcut+enlarge_len
-
-    print("ax_leftcut : %d" %ax_leftcut)
-    print("cut_sign : %d" %cut_sign)
-    print("plotlen : %.2f" %plotlen )
-
-    ax_larged=inset_axes(axes,"100%","100%",bbox_to_anchor=[0.9-0.35,0.05+(0.1+plotlen)*(1+cut_sign)/2,0.08+0.35,0.8-plotlen+0.02*(cut_sign-1)/2],bbox_transform=axes.transAxes,borderpad=0) #x축 시작 위치, y축 시작 위치, 너비, 높이
-
-    for i in range(Trial) :
-        ax_larged.plot(np.array(range(ax_leftcut,ax_rightcut))*h,Vcum[i+1,ax_leftcut:ax_rightcut,0,0],linewidth=0.3, alpha=0.5)
-    # ax_larged.set_xticks([])
-    ax_larged.set_yticks([])
-
-    # ax_larged.set_ylim(bottom=np.max(Vcum[:,ax_leftcut:ax_rightcut,0,0])-lar_len*1.5,top=np.max(Vcum[:,ax_leftcut:ax_rightcut,0,0])+lar_len*0.05)
-    # ax_larged.set_ylim(bottom=np.max(Vcum[:,ax_cut,0,0])-lar_len*1.5,top=np.max(Vcum[:,ax_cut,0,0])+lar_len*0.05)
-
-    my_mark_inset(axes,ax_larged,loc1a=2,loc1b=1,loc2a=3,loc2b=4,fc="none",ec="0.2",boxlw=0.6,connectlw=0.4) #우상부터 반시계로 1~4
-
-    axes.set_xlabel('t')
-    axes.set_ylabel('velocity',rotation=90)
+        cx_up.set_title(r'$\|\|v_t\|\|^2$')
+        # cx.set_yscale('log')
         
-    saveplot(2,plotsave)
+        cx_up.plot(np.arange(0,T)*h,[E0 for tt in range(T)],linewidth=0.5,c='gold',label=r'$E_0$')
+        cx_up.plot(np.arange(0,T)*h,E0-phE, alpha=0.8,linewidth=0.5,c='forestgreen',label=r'$E_0-E_\phi(t)$')
 
+        cx_down.plot(np.arange(0,T)*h,[E0 for tt in range(T)],linewidth=0.5,c='gold',label=r'$E_0$')
+        cx_down.plot(np.arange(0,T)*h,Vnrm,linewidth=0.7, c='teal', label=r'$\|\|v_t\|\|^2$')
+        cx_down.plot(np.arange(0,T)*h,E0-phE, alpha=0.8,linewidth=0.5,c='forestgreen',label=r'$E_0-E_\phi(t)$')
+        cx_down.legend(loc='best',fontsize=5)
 
-    # plot3 : graph of E(Vnrm)
-    fig=plt.figure(constrained_layout=True,figsize=fig_size)
-    spec=gridspec.GridSpec(ncols=18,nrows=6,figure=fig)
-
-    EVnrm=np.mean(Vnrmcum[1:],axis=0)
-    EphE=np.mean(phEcum[1:],axis=0)
-    VVnrmcum=np.sort(Vnrmcum[1:],axis=0)
-
-    E0=EVnrm[0]+EphE[0]
-    SupVnrm=max(np.max(VVnrmcum[int(Trial*0.9),:]), np.max(EVnrm))
-    print (EVnrm)
-
-    scale_const=int(np.log10(E0))
-    scale=10**(-scale_const)
-    
-    if E0>= SupVnrm:
-        cx_up=fig.add_subplot(spec[:2,:])
-        cx_down=fig.add_subplot(spec[2:,:])
-
-        # cx_down.plot(np.array(range(0,T))*h,[0 for tt in range(T)],linewidth=0.8,c='k')
-
-        cx_up.plot(np.array(range(0,T))*h,EVnrm*scale,linewidth=0.7,alpha=0.8,label=r'$\mathrm{\mathbb{E}}\Vert {\bf v}_t \Vert$')
-        cx_up.plot(np.array(range(0,T))*h,[E0*scale for tt in range(T)],linewidth=0.5,c='gold',label=r'$E_0$',ls='--')
-        cx_up.plot(np.array(range(0,T))*h,(E0-EphE)*scale, alpha=0.8,linewidth=0.7,c='forestgreen',label=r'$E_0-E^{\phi}_t$',ls='-.')
-        cx_up.plot(np.array(range(0,T))*h,(EphE+EVnrm)*scale, alpha=0.8,linewidth=0.5,c='firebrick',label=r'$E_t$',ls=':')
-
-        # cx_up.plot(range(0,T),medVnrm,c='paleturquoise',linewidth=0.7,alpha=0.7,label='median of ')
-        # cx_up.plot(range(0,T),VVnrmcum[int(Trial*0.9),:],c='deeppink',linewidth=0.5,alpha=0.7,label='90%')
-
-        cx_down.plot(np.array(range(0,T))*h,EVnrm*scale,linewidth=0.95,alpha=0.8,label=r'$\mathrm{\mathbb{E}}$')
-        cx_down.plot(np.array(range(0,T))*h,[E0*scale for tt in range(T)],linewidth=0.5,c='gold')
-        cx_down.plot(np.array(range(0,T))*h,(E0-EphE)*scale, alpha=0.8,linewidth=0.7,c='forestgreen',ls='-.')
-        cx_down.plot(np.array(range(0,T))*h,(EphE+EVnrm)*scale, alpha=0.8,linewidth=0.5,c='firebrick',ls=':')
-
-        # cx_down.plot(range(0,T),medVnrm,c='paleturquoise',linewidth=0.7,alpha=0.7,label='median')
-        # cx_down.plot(range(0,T),VVnrmcum[int(Trial*0.9),:],c='deeppink',linewidth=0.5,alpha=0.7,label='90%')
-
-        cx_up.set_ylim(0.9*E0*scale,E0*scale*1.01)
-        
-        # cxcut=E0-min(EphE[np.argmax(VVnrmcum[int(Trial*0.9),:])], EphE[np.argmax(EVnrm)])
-        
-        cx_top=SupVnrm*1.2*scale
-        # cx_bottom=min(np.min(VVnrmcum[0,:])*(-0.5),SupVnrm*(-0.05))*scale
-        cx_bottom=-0.001*2
-        cx_down.set_ylim(bottom=cx_bottom,top=cx_top)
-        
-        # cx_down.set_ylim(top=cxcut*1.2)
-
-
-        cx_up.legend(fontsize=9.5*0.83,loc='best')
-        # cx_down.legend(fontsize=10,loc='best')
+        cx_up.set_ylim(0.8*E0,E0*1.05)
+        cx_down.set_ylim(bottom=min(np.min(Vnrm)*(-0.5),SupVnrm*(-0.01)),top=SupVnrm*1.2)
 
         cx_up.spines['bottom'].set_visible(False)
         cx_down.spines['top'].set_visible(False)
         cx_up.xaxis.set_visible(False)
         cx_down.xaxis.tick_bottom()
 
-        cx_up.set_xlim(right=(T-2)*h, left=-.01/9)
-        cx_down.set_xlim(right=(T-2)*h,left=-.01/9)
-        axes=cx_down
+        reddot, =cx_down.plot([0],[Vnrm[0]],'r.') #왠지 모르겠는데 reddot뒤의 ,을 빼면 animation 부분에서 에러남.
 
-        d = .004  # how big to make the diagonal lines in axes coordinates
-        # arguments to pass to plot, just so we don't keep repeating them
-        kwargs = dict(transform=cx_up.transAxes, color='k', clip_on=False,lw=0.8)
-
-        curvyline_x=np.linspace(-d,1+d,250)
-        curvyline_y=1.5*2*d*np.sin(2*np.pi/d*8*curvyline_x)
-        cx_up.plot(curvyline_x,curvyline_y, **kwargs)        # top-left diagonal
-
-        kwargs.update(transform=cx_down.transAxes)  # switch to the bottom axes
-        cx_down.plot(curvyline_x, 1+0.7*curvyline_y, **kwargs)  # bottom-right diagonal
-
-        cx_up.annotate(r'$\times$10$^{%i}$' %(scale_const),xy=(0.003,0.83),xycoords='axes fraction')
-        #축의 가ㅄ 표시 형식 -> 이것 저것 해보다가 결국 수동으로 하기로
-        #https://stackoverflow.com/questions/39620700//positioning-the-exponent-of-tick-labels-when-using-scientific-notation-in-matplo
-
-    else :
-        cx=fig.add_subplot(spec[:,:])
-   
-        # cx.set_title(r'$\mathrm{\mathbb{E}}||v(t)||^2$')
-        # cx.set_xlabel('K=%.2f,M=%.2f, sigma=%.2f' %(K,M,L))
-
-        cx.plot(np.array(range(0,T))*h,EVnrm,linewidth=0.7,alpha=0.8,label=r'$\mathrm{\mathbb{E}}||v||$')
-        cx.plot(np.array(range(0,T))*h,[E0 for tt in range(T)],linewidth=0.5,c='gold',label=r'$E_0$')
-        cx.plot(np.array(range(0,T))*h,E0-EphE, alpha=0.8,linewidth=0.5,c='forestgreen',label=r'$E_0-E^{\phi}_t$',ls='-.')
-        cx.plot(np.array(range(0,T))*h,EphE+EVnrm, alpha=0.8,linewidth=0.5,c='firebrick',label=r'$E_t$',ls=':')
-
-        # cx.plot(range(0,T),medVnrm,c='paleturquoise',linewidth=0.7,alpha=0.7,label='median')
-        # cx.plot(range(0,T),VVnrmcum[int(Trial*0.9),:],c='deeppink',linewidth=0.5,alpha=0.7,label='90%')
-        cx.legend(fontsize=10,loc='best')
-        
-        cx_top=E0
-        cx_bottom=-0.001
-        axes=cx
-
-    plotlen=abs(np.min(EVnrm))/(E0+abs(np.min(EVnrm)))
-    cx_larged=inset_axes(axes,"100%","100%",bbox_to_anchor=[0.7,plotlen+0.15,0.28,0.8-plotlen],bbox_transform=axes.transAxes,borderpad=0) #x축 시작 위치, y축 시작 위치, 너비, 높이
-
-    cx_larged.plot(np.array(range(0,T))*h,EVnrm*scale,label=r'$\mathrm{\mathbb{E}}$')
-    cx_larged.plot(np.array(range(0,T))*h,(E0-EphE)*scale, alpha=0.8,linewidth=0.7,c='forestgreen',label=r'$E_0-E_\phi(t)$',ls='-.')
-    # cx_larged.plot(range(0,T),medVnrm,c='paleturquoise',linewidth=0.7,alpha=0.7)
-    # cx_larged.plot(range(0,T),VVnrmcum[int(Trial*0.9),:],c='deeppink',linewidth=0.5,alpha=0.7)
-
-    # cx_rightcut=np.argmax(EVnrm)
-    cx_rightcut=int(T/250*3)
-    # cx_larged.set_ylim(bottom=min(np.min(VVnrmcum[0,:])*(-0.5),SupVnrm*(-0.01)),top=SupVnrm*1.05)
-    # cx_larged.set_ylim(bottom=min(np.min(VVnrmcum[0:cx_rightcut])*(-0.5),np.max(EVnrm[0:cx_rightcut])*(-0.1)),top=(E0-np.min(EphE[:int(cx_rightcut*1.05)]))*0.65)
-    # cx_larged.set_ylim(bottom=max(cx_bottom,np.max(EVnrm[:int(cx_rightcut*1.05)+1])*(-0.025)*scale),top=min(scale*((E0-np.min(EphE[:int(cx_rightcut*1.05)+1]))*0.35+np.max(EVnrm[0:int(cx_rightcut*1.05)+1])*0.65),cx_top*0.9))
-    cx_larged.set_ylim(bottom=max(cx_bottom,np.min(EVnrm[:int(cx_rightcut*1.05)+1])*scale),top=min(scale*((E0-np.min(EphE[:int(cx_rightcut*1.05)+1]))*0.35+np.max(EVnrm[0:int(cx_rightcut*1.05)+1])*0.65),cx_top*0.9))
-    # cx_larged.set_xlim(left=cx_rightcut*(-0.05)*h,right=cx_rightcut*1.05*h)
-    cx_larged.set_xlim(left=0,right=cx_rightcut*1.05*h)
-    # cx_larged.legend(fontsize=5,loc='best')
-    cx_larged.set_yticks([])
-
-    my_mark_inset(axes,cx_larged,loc1a=2,loc1b=1,loc2a=3,loc2b=4,fc="none",ec="0.2",boxlw=0.4,connectlw=0.3) #우상부터 반시계로 1~4
-
-    axes.set_xlabel('t')
-
-    saveplot(3,plotsave)
-
-
-    ## dx : graph of H(x,v)
-    fig=plt.figure(figsize=fig_size)
-
-    Hxv=np.mean(Xbnrmcum[1:]+Vnrmcum[1:],axis=0)
-    plt.plot(np.array(range(0,T))*h,Hxv)
-    axes=plt.axes()
-    axes.set_xlim(left=0,right=(T-2)*h)
-    axes.set_ylim(bottom=-0.001*2400)
-
-    axes.set_xlabel('t')
-    axes.set_yscale('log')
-
-    saveplot(4,plotsave)
-
-    #fig.tight_layout()
-
-def my_mark_inset(parent_axes, inset_axes, loc1a=1, loc1b=1, loc2a=2, loc2b=2,boxlw=0.5,connectlw=0.5, **kwargs):
-    rect = TransformedBbox(inset_axes.viewLim, parent_axes.transData)
-    pp = BboxPatch(rect, fill=False,lw=boxlw, **kwargs)
-    parent_axes.add_patch(pp)
-    p1 = BboxConnector(inset_axes.bbox, rect, loc1=loc1a, loc2=loc1b,lw=connectlw, **kwargs)
-    inset_axes.add_patch(p1)
-    p1.set_clip_on(False)
-    p2 = BboxConnector(inset_axes.bbox, rect, loc1=loc2a, loc2=loc2b,lw=connectlw, **kwargs)
-    inset_axes.add_patch(p2)
-    p2.set_clip_on(False)
-    return pp, p1, p2
-
-def saveplot(plotnum,save) : 
-    if save!=0 :
-        # plt.savefig('graph_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%dh%.5f-%d.pdf' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,h,plotnum),dpi=2000,bbox_inches='tight',pad_inches=0.02)
-        if plotnum == 2 :
-            plt.savefig('graph_k%.1fm%.1fs%.5fnet%d.%d.%dN%d-%d.eps' %(K,M,L,nettype[0],nettype[1],nettype[2],N,plotnum),dpi=3000,bbox_inches='tight',pad_inches=0.02)
-
-        plt.savefig('graph_k%.1fm%.1fs%.5fnet%d.%d.%dN%d-%d.pdf' %(K,M,L,nettype[0],nettype[1],nettype[2],N,plotnum),dpi=3000,bbox_inches='tight',pad_inches=0.02)
-                
-        print("image saved_%d" %plotnum)
-
-    else :
-        plt.show()
-
-
-def savedata(savemode) :
-    ## savemode==1 : save just outlier data and initial setting
-    ## savemode==2 : save all data and initial setting
-    ## savemode==0 : don't save
-
-    if savemode==1 :
-
-        print("data reshaping")
-
-        selP = Pcum[selI,:,:,:].reshape(-1,T*N*2)
-        selV = Vcum[selI,:,:,:].reshape(-1,T*N*2)
-
-        selVnrm = Vnrmcum[selI,:]
-        selXbnrm = Xbnrmcum[selI,:]
-        seldB = dBcum[selI,:]
-
-        selP_df=pd.DataFrame(selP)
-        selV_df=pd.DataFrame(selV)
-
-        selVnrm_df=pd.DataFrame(selVnrm)
-        selXbnrm_df=pd.DataFrame(selXbnrm)
-        seldB_df=pd.DataFrame(seldB)
-
-        selcount_df=pd.DataFrame(selcount)
-
-        print("saving...")
-
-        selP_df.to_csv('selP_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        selV_df.to_csv('selV_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        selVnrm_df.to_csv('selVnrm_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        selXbnrm_df.to_csv('selXbnrm_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        seldB_df.to_csv('seldB_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        selcount_df.to_csv('selcount_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-
-    elif savemode==2 :
-        print("data reshaping")
-
-        reP = Pcum.reshape(-1,T*N*2)
-        reV = Vcum.reshape(-1,T*N*2)
-        redB = dBcum.reshape(-1,T*2)
-
-        P_df=pd.DataFrame(reP)
-        V_df=pd.DataFrame(reV)
-        dBcum_df=pd.DataFrame(redB)
-
-        Vnrm_df=pd.DataFrame(Vnrmcum)
-        Xbnrm_df=pd.DataFrame(Xbnrmcum)
-        phE_df=pd.DataFrame(phEcum)
-        
-        print("saving...")
-
-        P_df.to_csv('P_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        V_df.to_csv('V_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        Vnrm_df.to_csv('Vnrm_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        Xbnrm_df.to_csv('Xbnrm_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        phE_df.to_csv('phE_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        dBcum_df.to_csv('dBcum_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-
-    # setting 을 df로 만들어서 입출력 편하게 저장하는 법 확인하기. 
-    # dB, Pinit, Vinit, Z, A
-
-
-    if savemode!=0 :
-        variables=['N','alpha','beta','psLB','phLB','K','M','L','T','h','Trial','cut','nettype','curvetype','version']
-        setting={}
-        for index in variables:
-            setting[index]=globals()[index]
-
-        setting_df = pd.DataFrame(setting)
-
-        Pinit_df=pd.DataFrame(Pinit)
-        Vinit_df=pd.DataFrame(Vinit)
-        Z_df=pd.DataFrame(Z)
-        A_df=pd.DataFrame(A)
-
-        setting_df.to_csv('setting_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        Pinit_df.to_csv('Pinit_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        Vinit_df.to_csv('Vinit_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        Z_df.to_csv('Z_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        A_df.to_csv('A_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-
-def makenet(net_type):
-    A=np.zeros((N,N))
+    ##plotting Xbnrm
+    dx.set_title(r'$\max_{i=1,\cdots, N} |\bar{x}_t^i|$')
+    # dx.set_yscale('log')
+    dx.plot(np.arange(0,T)*h,np.zeros(T),c='k',linewidth=0.8)
     
-    if net_type==0 :
-        A[:,:]=1
-        for i in range(N) :
-            A[i,i]=0
-
-    elif net_type==1 :
-        for i in range(N-1) :
-            A[i,i+1] = 1
-
-        A[0,1:N]=1
-        A[0:int(N/2)-1,int(N/2)-1]=1
-        A[int(N/2)-1,int(N/2):N]=1
-        A[:N-1,N-1]=1
-
-        A=A+A.T
-
-    elif net_type==2 :
-        for i in range(N-1) :
-            A[i,i+1] = 1
-
-        A=A+A.T
-
-    elif net_type==3 :
-        if N % 2 != 0 :
-            step=2
-        elif N % 4 == 0 :
-            step=N/2-1
-        else :
-            step=N/2-2
-
-        for i in range(N) :
-            A[i,int((i+step)%N)]=1
-            A[i,int((i-step)%N)]=1
-
-    elif net_type==4 :
-        for i in range(N-1) :
-            A[i,i+1] = 1
-
-        A=A+A.T
-
-        for i in range(int(N/10)) :
-            A[i*10,:]=1
-            A[:,i*10]=1
-            A[i*10,i*10]=0
-
-    elif net_type==5 :
-        for i in range(N-1) :
-            A[i,i+1] = 1
-        A[N-1,0]=1
-
-        A=A+A.T
+    dx.plot(np.arange(0,T)*h,Xbnrm)
+    reddot2, =dx.plot([0],[Xbnrm[0]],'r.') #왠지 모르겠는데 reddot뒤의 ,을 빼면 animation 부분에서 에러남. 
+    dx.set_xlim(0,(T-2)*h)
 
 
-    return A
+    global ani
+    ani = animation.FuncAnimation(fig,_update_plot,fargs=(fig,scat,qax,ax,reddot,reddot2),frames=T-1,interval=100/6,save_count=T-1)
 
-def phiEest(ssq,b,LB):
+    #interval이 너무 작으니깐(fps가 너무 커지니깐) save가 안됨-파일을 열때 에러남.
+
+    plt.show()
+
+def savesnapshot(s_time) :
+    fig=plt.figure(figsize=(3,3))
+    ax=plt.axes()
+    ax.set_aspect('equal')
+    
+    # if limT < s_time :
+
+    #     Xmin = np.min(P[s_time,:,0])
+    #     Ymin = np.min(P[s_time,:,1])
+       
+    #     xylen=np.max(Pdiff[s_time:])
+
+    #     #If I choose the condition more sutiable, then the animation will be fancier
+    #     if xylen>=10*Pdiff[s_time] :
+    #         xylen=Pdiff[s_time] 
+
+    #     ax.set_xlim([Xmin-xylen*0.15,Xmin+xylen*1.15])
+    #     ax.set_ylim([Ymin-xylen*0.15,Ymin+xylen*1.15])
+
+
+    Xmin = np.min(P[s_time,:,0])
+    Ymin = np.min(P[s_time,:,1])
+    Xmax = np.max(P[s_time,:,0])
+    Ymax = np.max(P[s_time,:,1])
+
+    CenterX = (Xmin+Xmax)/2
+    CenterY = (Ymin+Ymax)/2
+    
+    # xylen=2*max(max(np.abs(Xmean-Xmax),np.abs(Xmean-Xmin)),max(np.abs(Ymean-Ymax),np.abs(Ymean-Ymin)))
+    xylen=max(Xmax-Xmin,Ymax-Ymin)
+
+    # #If I choose the condition more sutiable, then the animation will be fancier
+    # if xylen>=10*Pdiff[s_time] :
+    #     xylen=Pdiff[s_time] 
+
+    ax.set_xlim([CenterX-xylen/2*1.15,CenterX+xylen/2*1.15])
+    ax.set_ylim([CenterY-xylen/2*1.15,CenterY+xylen/2*1.15])
+        
+    # ax.set_xlabel(r'$\Delta t=%.5f, STEP: %d$' %(h,s_time),fontsize=9)
+
+    dotsize=600/len(Domain) *0.6
+    
+    if dotcolors==1:
+        dotc=Domain
+        dotcmap='twilight_shifted'
+    elif dotcolors==2:
+        dotc=-Domain
+        dotcmap='nipy_spectral'
+    elif dotcolors==0:
+        dotc='tab:blue'
+        dotcmap='nipy_spectral'
+
+    scat=ax.scatter(P[s_time].T[0], P[s_time].T[1],s=dotsize,c=dotc, cmap=dotcmap) #P[0].T[1] = (transpose of P[0])[1]. cmap=따라 컬러 스펙트럼 바뀜
+    scat.set_alpha(0.6)
+    # qax=ax.quiver(P[s_time].T[0],P[s_time].T[1],nV[s_time].T[0],nV[s_time].T[1],angles='xy',width=0.001,scale=70/2)
+    qax=ax.quiver(P[s_time].T[0],P[s_time].T[1],nV[s_time].T[0],nV[s_time].T[1],angles='xy',linewidth=0.0020,headlength=2,headaxislength=1.8,headwidth=2.3,scale=70/2)
+
+    axes=plt.axes()
+    # axes.set_xticks([])
+    # axes.set_yticks([])
+    plt.savefig('graph_net%d.%d.%d.-%s-%.3f.pdf' %(nettype[0],nettype[1],nettype[2],trialname,s_time*h),bbox_inches='tight', pad_inches=0.02)
+    print("image saved_%d" %s_time)
+
+
+
+def _update_plot (i,fig,scat,qax,ax,reddot,reddot2) : #making animationed plot
+
+    global xylen
+
+    ax.set_xlabel(r'$\Delta t=%.5f, step : %d, time =%.5f$' %(h,i,h*i)+'\n'+'(frame_length)=%.3f\n'%xylen+r'$v_0^{ave}=(%.3f,%.3f)$'%(Vimean[0],Vimean[1])+', '+r'$v_t^{ave}=(%.6f,%.6f)$' %(np.mean(V[i,:,0]),np.mean(V[i,:,1])),fontsize=8)
+
+    if limT < i :
+
+        Xmin = np.min(P[i,:,0])
+        Ymin = np.min(P[i,:,1])
+        Xmax = np.max(P[i,:,0])
+        Ymax = np.max(P[i,:,1])
+
+        CenterX = (Xmin+Xmax)/2
+        CenterY = (Ymin+Ymax)/2
+        
+        xylen=np.max(Pdiff[i:])
+        
+        #If I choose the condition more sutiable, then the animation will be fancier
+        if xylen>=10*Pdiff[i] :
+            xylen=Pdiff[i] 
+
+        ax.set_xlim([CenterX-xylen/2*1.15,CenterX+xylen/2*1.15])
+        ax.set_ylim([CenterY-xylen/2*1.15,CenterY+xylen/2*1.15])
+        
+        frame_v=((np.min(P[i+1,:,0])-np.min(P[i,:,0]))/h,(np.min(P[i+1,:,1])-np.min(P[i,:,1]))/h)
+        ax.set_xlabel(r'$\Delta t=%.5f, step:%d, time=%.5f$' %(h,i,h*i)+'\n'+'(frame_length)=%.3f, (frame_v)=(%.3f,%.3f)\n'%(xylen,frame_v[0],frame_v[1])+r'$v_0^{ave}=(%.3f,%.3f)$'%(Vimean[0],Vimean[1])+', '+r'$v_t^{ave}=(%.6f,%.6f)$' %(np.mean(V[i,:,0]),np.mean(V[i,:,1])),fontsize=8)
+        #global 선언이 안되어서 꼬인다는데 이유는 모르겠음. 해주니깐 해결되긴 함
+    
+    scat.set_offsets(P[i])
+    qax.set_offsets(P[i])
+
+    qax.set_UVC(nV[i].T[0],nV[i].T[1])
+    # qax.quiver(PPP[0],PPP[1],VVV[0],VVV[1],angles='xy') -> 이렇게 하면 화살표가 위에 새로 계속 찍힘. 만약 ax.clear() 혹은 .remove() 했으면 달라졌을지도 
+    
+    # print ('Frames:%d' %i)
+    reddot.set_data(i*h,Vnrm[i])
+    reddot2.set_data(i*h,Xbnrm[i])
+    
+    return scat,qax,ax,reddot,reddot2
+
+def phiEest(ssq,b,LB): #estimating energy about phi function
     phE=(np.power(1+ssq,1-b)-1)/(1-b)+ssq*LB
     return phE
 
-def psi(s,b,LB):
-    a = np.power((1+s),-b) + LB
+def weight(s,b,LB):
+    a = np.power(1+s,-b) + LB
     return a
 
-def csmpf(X,V):
-
-    Kem=np.zeros((N,2))
+def csmpf(X,V): #Cucker Smale Model with Pattern Formation
+    K_e=np.zeros((N,2)) 
 
     for i in range(N):
 
         J= A_ps[i,:] == 1
 
         s=(np.power(X[i][0]-X[:,0],2)+np.power(X[i][1]-X[:,1],2))[J]
+        s=np.nan_to_num(s)
         
-        ps=psi(s,alpha,psLB)
+        ps=weight(s,alpha,psLB)
 
         a=np.sum((V[J]-V[i])*np.array([ps]).T,axis=0) * K
         #행렬의 각 행별로 array에 저장된 scalar를 곱하려고 하려면 dimension이 같아야함
@@ -514,20 +297,21 @@ def csmpf(X,V):
 
         u=np.array([0.0,0.0])
 
-        ss=(np.power(X[i][0]-Z[i][0]-X[:,0]+Z[:,0],2)+np.power(X[i][1]-Z[i][1]-X[:,1]+Z[:,1],2))[J]
-        pss=psi(ss,beta,phLB)
-        u=np.sum((X[J]-Z[J]-X[i]+Z[i])*np.array([pss]).T,axis=0) * M
+        s=(np.power(X[i][0]-Z[i][0]-X[:,0]+Z[:,0],2)+np.power(X[i][1]-Z[i][1]-X[:,1]+Z[:,1],2))[J]
+        s=np.nan_to_num(s)
+
+        ph=weight(s,beta,phLB)
+        u=np.sum((X[J]-Z[J]-X[i]+Z[i])*np.array([ph]).T,axis=0) * M
 
         a+=u
 
-        Kem[i]=a
+        K_e[i]=a
    
-    Kem=np.nan_to_num(Kem)
+    K_e=np.nan_to_num(K_e)
 
-    return Kem
+    return K_e
 
 def brown(V) :
-
     W=np.zeros((N,2))
 
     for i in range(N) :
@@ -546,8 +330,14 @@ def theta(x):
 def Curve (dom) :
 
     num=N
+
+    ## In this kinds of curve equation from Wolfram alpha,
+    ## they multiplied to theta(sin(t/2)) to the equation if the curve is "jumping" (theta is step function).
+    ## Thus there are some points that their components are complex, i.e. not plotted in the R^2 plane,
+    ## and we need to inflate the number of the points if we need to get required points in R^2. 
+     
     if jump==1:
-        num*=2
+        num*=2 #Actually, it is not accurate, so it should be changed.
 
     t=np.linspace(0,dom,num,endpoint=False)
 
@@ -567,13 +357,14 @@ def Curve (dom) :
         print("error : there is not such curve name")
         quit()
 
+
     Target = np.array([X,Y]).T
 
     if jump==1:
         
         Jcheck0=np.zeros(num)
         for i in range(num-1) :
-            Jcheck0[i]=np .count_nonzero(Target[i+1:] == Target[i])
+            Jcheck0[i]=np.count_nonzero(Target[i+1:] == Target[i])
 
         Jcheck1= Target[:] != [[0,0]]
 
@@ -581,27 +372,188 @@ def Curve (dom) :
 
         Target=Target[Jcheck]
         t=np.linspace(0,dom,Jcheck.sum(),endpoint=False)
+        print("Jump check")
         print(Jcheck.sum())
 
     return Target,t
 
-def setPVinit(setting) :
-    global Pinit, Vinit
-    global Xbmean, Vimean
 
-    if setting==0:
+if __name__ == '__main__':
+    
+    version=1.8
+
+    # N=int(input("N=?"))
+
+    # alpha=float(input("alpha=?"))
+    # beta=float(input("beta=? (if alpha = beta, input -1)"))
+
+    # if beta==-1.0 :
+    #     beta = alpha
+
+    # ## ein set
+
+    # N=500
+
+    # ## psi(r^2) = (1+r^2)^(-alpha) + psLB, phi(r)=(1+r^2)^(-beta) + phLB
+    # alpha=0.25
+    # beta=alpha
+    # psLB=0.3
+    # phLB=0.1
+
+    # # K=float(input("K=?"))
+    # # M=float(input("M=?"))
+    # # L=float(input("L=?"))
+    # # T=int(input("T=?"))
+
+    # K=0.5
+    # M=7   # L=0.00001 #L=sigma
+    # L=0.00001
+    # T=180 #T : number of steps for solving the DE
+
+    # curvetype=3
+    # nettype=[4,4,0]
+    # PVinitset=1 #whether making or loading the initial data of P,V
+    # fname='_ein'
+    # h=0.025/2 #h=\Delta t ~ dt
+
+    ##pi set
+
+    N=30
+
+    ## psi(r^2) = (1+r^2)^(-alpha) + psLB, phi(r)=(1+r^2)^(-beta) + phLB
+    alpha=0.25
+    beta=alpha
+    psLB=0.31
+    phLB=0.1
+
+    # K=float(input("K=?"))
+    # M=float(input("M=?"))
+    # L=float(input("L=?"))
+    # T=int(input("T=?"))
+
+    K=5
+    M=7   # L=0.00001 #L=sigma
+    L=0.001
+    T=1400 #T : number of steps for solving the DE
+
+    curvetype=1
+    nettype=[3,1,0]
+    PVinitset=1 #whether making or loading the initial data of P,V
+    fname='_pi'
+    h=0.025 #h=\Delta t ~ dt
+
+
+    # making target pattern : Z
+
+    if curvetype==0:
+        curvename='circle'
+        domain=2*np.pi
+
+        jump=0 #i.e. curve is continuos
+
+    elif curvetype==1:
+        curvename='pi'
+        domain=2*np.pi
+
+        jump=0
+
+    elif curvetype==2:
+        curvename='b.simpson'
+        domain=72*np.pi
+
+        jump=1 #i.e. curve is not continous.
+    
+    elif curvetype==3:
+        curvename='einstein'
+        domain=92*np.pi
+
+        jump=1
+
+
+    Z,Domain=Curve(domain) #determining the Z
+
+    ## A : adjacency matrix for the network graph
+
+    zeta=['ps','ph','b']
+
+    for ind in range(3):
+
+        A=np.zeros((N,N))
+        
+        if nettype[ind]==0 :
+            A[:,:]=1
+            for i in range(N) :
+                A[i,i]=0
+
+        elif nettype[ind]==1 :
+            for i in range(N-1) :
+                A[i,i+1] = 1
+
+            A[0,1:N]=1
+            A[0:int(N/2)-1,int(N/2)-1]=1
+            A[int(N/2)-1,int(N/2):N]=1
+            A[:N-1,N-1]=1
+
+            A=A+A.T
+
+        elif nettype[ind]==2 :
+            for i in range(N-1) :
+                A[i,i+1] = 1
+
+            A=A+A.T
+
+        elif nettype[ind]==3 :
+            if N % 2 != 0 :
+                step=2
+            elif N % 4 == 0 :
+                step=N/2-1
+            else :
+                step=N/2-2
+
+            for i in range(N) :
+                A[i,int((i+step)%N)]=1
+                A[i,int((i-step)%N)]=1
+
+        elif nettype[ind]==4 :
+            for i in range(N-1) :
+                A[i,i+1] = 1
+
+            A=A+A.T
+
+            for i in range(int(N/10)) :
+                A[i*10,:]=1
+                A[:,i*10]=1
+                A[i*10,i*10]=0
+
+        elif nettype[ind]==5 :
+            for i in range(N-1) :
+                A[i,i+1] = 1
+
+            A[N-1,0] = 1
+            
+            A=A+A.T
+
+
+
+        globals()['A_{}'.format(zeta[ind])]=np.copy(A)
+   
+
+    ## Setting initial values of P,V
+    ## (positions and velocities of particles, respectively).
+    ## i.e. P=\bx, V=\bv 
+
+    if PVinitset==0:
         Pinitlen=int((np.max(Z)-np.min(Z)))
         # Pinitlen=20
-        coeff=0.25
-        # coeff=0.5
+        coeff=0.5
         # coeff=1.25
-        
         P_range=Pinitlen*coeff
         print("P_range = %f" %P_range)
         Pinit=np.random.rand(N,2)*P_range-P_range/2 
 
         Pinit-=np.array(np.mean(Pinit[:],axis=0))
         Pinit+=np.array(np.mean(Z[:],axis=0))
+        print(np.mean(Z[:],axis=0))
 
         v_range=50
         v_s=np.random.randint(-10,10,size=2)
@@ -614,344 +566,188 @@ def setPVinit(setting) :
 
     else :
         print(os.getcwd())
-        Pinit_df=pd.read_csv('./Pinit_%s.csv' %set_name,delimiter='\t')
-        Vinit_df=pd.read_csv('./Vinit_%s.csv' %set_name,delimiter='\t')
+        Pinit_df=pd.read_csv('./Pinit%s.csv' %fname,delimiter='\t')
+        Vinit_df=pd.read_csv('./Vinit%s.csv' %fname,delimiter='\t')
 
         Pinit=Pinit_df.to_numpy()
         Vinit=Vinit_df.to_numpy()
-        print(Pinit.shape)
 
     Xbimean=np.array(np.mean(Pinit[:]-Z[:],axis=0))
-    print("\nbarX_i mean={}".format(Xbimean))
+    print("\nbarX_0 mean={}".format(Xbimean))
     Vimean=np.array(np.mean(Vinit[:],axis=0))        
-    print("\nVimean={}".format(Vimean))
-
-def set_dBcum(setting) :
-    global dBcum
-
-    dBcum=np.zeros((Trial+1,2,T))
-    if setting == 0 :
-        dBcum[1:,0,:]=np.random.normal(0,np.sqrt(h),(Trial,T))
-        dBcum[1:,1,:]=np.random.randint(0,1,(Trial,T))*2-1
-
-    else :
-        dBcum_df=pd.read_csv('./dBcum.csv',delimiter='\t')
-        dBcum_np=dBcum_df.to_numpy()
-        dBcum=dBcum_np.reshape(-1,2,T)
-
-def settings(set_name) :
-    global N
-    global alpha, beta, psLB, phLB
-    global K, M, L, T
-    global curvetype,nettype, h
-    global PVinitset, dBset
-
-    if set_name=='ein' :
-        ##ein set
-        N=500
-        alpha=0.25
-        beta=alpha
-
-        psLB=0.3
-        phLB=0.1
-
-        K=0.5
-        M=7
-        L=0.00001 #L=sigma
-        T=400 #T : number of steps for solving the DE
-        T=180
-
-        curvetype=3 
-        # nettype=[0,0,0]
-        nettype=[3,1,0]
-        nettype=[4,4,0]
-        # nettype=[4,3,0]
-
-        PVinitset=1 #whether making or loading the initial data of P,V
-        h=0.025/2 #h=\Delta t ~ dt
-        dBset=0
-
-    elif set_name=='pi' :
-        ##pi set
-        N=30
-        alpha=0.25
-        beta=alpha
-
-        psLB=0.31
-        phLB=0.1
-
-        K=5
-        M=7
-        L=0.001 #L=sigma
-        T=400 #T : number of steps for solving the DE
-        T=1400
-
-        curvetype=1 
-        # nettype=[0,0,0]
-        nettype=[3,1,0]
-        # nettype=[4,3,0]
-
-        PVinitset=1 #whether making or loading the initial data of P,V
-        h=0.025 #h=\Delta t ~ dt
-        dBset=0
-
-        # cut=100
-
-def make_variables():
-    global P, V
-    global Pdiff, Vnrmi, Xbave, Xbnrmi, phEi
+    print("\nV_0 mean={}".format(Vimean))
 
     P=np.array([Pinit])
     V=np.array([Vinit])
 
-    print(P[0])
-    print(V[0])
-    print(Vimean)
+    ## Pdiff(t) = max_k=1,2 (max_i,j |(x_t^i)_k-(x_t^j)_k|) : used when plotting
+    Pdiff=np.zeros(T)
+    Pdiff[0]=max(np.max(Pinit[:,0])-np.min(Pinit[:,0]),np.max(Pinit[:,1])-np.min(Pinit[:,1]))
 
-    ## Vnrm(t) = Vnrm = sum_i |v_t^i|^2
-    s=np.power(Vinit[:,0],2)+np.power(Vinit[:,1],2)
-    Vnrmi=np.sum(s)-N*np.sum(np.power(Vimean,2))
+    # print(P[0])
+    # print(V[0])
 
-    ## Xbnrm(t) = sum_i |x*_i-x*_ave|^2 = \sum_{i} |\bar{x}_t^i-\bar{x}_t^ave|^2
-    Xbave=np.sum(Pinit,axis=0)-np.sum(Z,axis=0)
-    Xbnrmi=np.sum(np.power(Pinit[:,0]-Z[:,0]-Xbave[0],2)+np.power(Pinit[:,1]-Z[:,1]-Xbave[1],2))
+    #Vnrm(t) = Vnrm = sum_i |v_t^i|^2
+    #nV(t) = normalized V -> direction of each v^i vectors
+    s=np.sqrt(np.power(Vinit[:,0],2)+np.power(Vinit[:,1],2))
+    
+    Vnrm=np.zeros(T)
+    Vnrm[0]=np.sum(np.power(s,2))
+    
+    ## when calculating nV, s shouldn't be 0
+    J = s[:]==0
+    s[J] = 1
 
-    ##phE(t)=\sum_{i,j\in\calE} \int_0^|\bar{x}_t^{ij}|^2 \phi(r)dr
-    phEi=0    
+    arrow_len=2-10/(np.sqrt(s)+5)
+
+    nVinit=np.copy(Vinit)/np.array([s]).T * np.array([arrow_len]).T
+    nV=np.array([nVinit])
+    
+    #Xbnrm(t) = sum_i,j |x*_i-x*_j|^2 = 2N sum_i |x*_i|^2 - 2|sum_i x*_i|^2 = \sum_{i,j} |\bar{x}_t^i-\bar{x}_t^j|^2
+    #p.s. when v^ave is not 0, then \sum_i |\bar{x^i}|^2 is increasing in the end. 
+    Xbnrm=np.zeros(T)
+    Xbnrm[0]=np.power(np.max(np.power(Pinit[:,0]-Z[:,0],2)+np.power(Pinit[:,1]-Z[:,1],2)),1/2)
+
+    #phE(t)=\sum_{i,j\in\calE} \int_0^|\bar{x}_t^{ij}|^2 \phi(r)dr
+    phE=np.zeros(T)
     for i in range(N):
         J = A_ph[i,:]==1
         ssq=(np.power(P[0,i,0]-Z[i,0]-P[0,:,0]+Z[:,0],2)+np.power(P[0,i,1]-Z[i,1]-P[0,:,1]+Z[:,1],2))[J]
 
-        phEi+=np.sum(phiEest(ssq,beta,phLB))
+        phE[0]+=np.sum(phiEest(ssq,beta,phLB))
 
-    phEi*=M/2
+    phE[0]*=M/2
 
+    #dB : saving values of dBt
+    dB=np.zeros(T)
 
-if __name__ == '__main__':
-    
-    version=2.00
+    ## Solving DE
 
-    ##inputs and settings
-    set_name='pi'
-    test_name='test'
-    settings(set_name)
-
-    Trial=5
-    cut=10
-    dataset=0 #whether making or loading the solutions of DE
-
-    ##Setting target pattern. /curvetype
-    #jump==1 then the "curve" is disconnected
-    if curvetype==0:
-        curvename='circle'
-        domain=2*np.pi
-
-        jump=0
-
-    elif curvetype==1:
-        curvename='pi'
-        domain=2*np.pi
-
-        jump=0
-
-    elif curvetype==2:
-        curvename='b.simpson'
-        domain=72*np.pi
-
-        jump=1
-
-    elif curvetype==3:
-        curvename='einstein'
-        domain=92*np.pi
-
-        jump=1
-
-
-    Z,Domain=Curve(domain) #Set Z as given curve 
-
-    # A : adjacency matrix / nettype
-    zeta=['ps','ph','b']
-
-    for ind in range(3):
-
-        A=makenet(nettype[ind])
-
-        globals()['A_{}'.format(zeta[ind])]=np.copy(A)
-   
-    print(A_ps)
-
-    ##Setting a initial data of P,V / PVinitset
-    # P : positions, V : velocity. i.e. P=\bx, V=\bv 
-    setPVinit(PVinitset)
-
-    ## Making variables : P, V, and Pdiff, Vnrm, nV, Xbnrm, phE, calH
-    make_variables()
-
-    #이렇게 계속 append 하는 방식 말고 cum 미리 array 만들어 놓는게 빠른지 함 확인 해봐야 + 공간 어떤 방식이 더 많이 확보 가능한가
-    #-> 속도는 큰 차이 없고 오히려 append하는게 더 빠른 것 같아서 당황
-
-    Pcum=np.array([np.zeros((T,N,2))])
-    Vcum=np.array([np.zeros((T,N,2))])
-    nVcum=np.array([np.zeros((T,N,2))])
-
-    Vnrmcum=np.array([np.zeros(T)])
-    phEcum=np.array([np.zeros(T)])
-
-    Xbnrmcum=np.array([np.zeros(T)])
-
-    #dBcum : saving values of dBt
-    set_dBcum(dBset)
-
-    #지금 수정하기 귀찮다고 대충 했더니 cum ndarray들은 [0]=0 이고 [1]부터 가ㅄ이들어가는 상황 
-
-    ## Main part
-
-    if dataset==0:
-        for trial in range (0,Trial):
-
-            P=np.zeros((T,N,2))
-            V=np.zeros((T,N,2))
-            Vnrm=np.zeros(T)
-            Xbnrm=np.zeros(T)
-            phE=np.zeros(T)
-                    
-            P[0]=np.array([Pinit])
-            V[0]=np.array([Vinit])
-            Vnrm[0]=Vnrmi
-            Xbnrm[0]=Xbnrmi
-            phE[0]=phEi
-
-            ## Solving DE for each trial
-            for t in range(1,T):
-                # print ("start %dth loop" %t)
-                
-                Pnow=np.copy(P[t-1])
-                Vnow=np.copy(V[t-1])
-
-                ## Stochastic Runge Kutta.
-
-                ## calculating P[t], V[t]
-                ## P,V_t = P,V_t-1 + (K_1 /2 +K_2 /2)
-                ## K_1 = h * csmpf (P,V_t-1)+ (dBt-1-S*sqrt(h)) * Br(P,V_t-1)
-                ## K_2 = h * csmpf (P,V_t-1 + K_1)+ (dBt-1+S*sqrt(h)) * Br(P,V_t-1 + K_1)
-                ## https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_method_(SDE)
-
-                dBt=dBcum[trial+1,0,t]
-                S=dBcum[trial+1,1,t]
-
-                K_1=np.array([Vnow,csmpf(Pnow,Vnow)])*h+np.array([np.zeros((N,2)),(dBt-S*np.sqrt(h))*brown(Vnow)])
-                K_2=np.array([Vnow+K_1[1],csmpf(Pnow+K_1[0],Vnow+K_1[1])])*h+np.array([np.zeros((N,2)),(dBt+S*np.sqrt(h))*brown(Vnow+K_1[1])])
-
-                Pnext=np.copy(Pnow)
-                Vnext=np.copy(Vnow)
-
-                Pnext+=(K_1[0]+K_2[0])/2
-                Vnext+=(K_1[1]+K_2[1])/2
-
-                Pnext=np.nan_to_num(Pnext)
-                Vnext=np.nan_to_num(Vnext)
-
-                ## appending P,V, dB
-                P[t]=np.array([Pnext])
-                V[t]=np.array([Vnext])
-
-                ## calculating and appending Vnrm, Xbnrm, phE
-                s=np.power(Vnext[:,0],2)+np.power(Vnext[:,1],2)
-
-                Vmean=np.array(np.mean(Vnext[:],axis=0))        
-                Vnrm[t]=np.sum(s)-N*np.sum(np.power(Vmean,2))
-
-                Xbmean=np.array(np.mean(Pnext[:]-Z[:],axis=0))
-                Xbnrm[t]=np.sum(np.power(Pnext[:,0]-Z[:,0]-Xbmean[0],2)+np.power(Pnext[:,1]-Z[:,1]-Xbmean[1],2))
-
-                for i in range(N):
-                    J = A_ph[i,:]==1
-                    ssq=(np.power(P[t,i,0]-Z[i,0]-P[t,:,0]+Z[:,0],2)+np.power(P[t,i,1]-Z[i,1]-P[t,:,1]+Z[:,1],2))[J]
-
-                    phE[t]+=np.sum(phiEest(ssq,beta,phLB))
-
-                phE[t]*=M/2
+    for t in range(1,T):
+        # print ("start %dth loop" %t)
         
-            ##appending to cumulative data array
-            Pcum=np.append(Pcum,np.array([P]),axis=0)
-            Vcum=np.append(Vcum,np.array([V]),axis=0)
-            Vnrmcum=np.append(Vnrmcum,np.array([Vnrm]),axis=0)
-            Xbnrmcum=np.append(Xbnrmcum,np.array([Xbnrm]),axis=0)
-            phEcum=np.append(phEcum,np.array([phE]),axis=0)
+        Pnow=np.copy(P[t-1])
+        Vnow=np.copy(V[t-1])
 
-            if trial % 10 ==0 :
-                print("end %d" %trial)
+        ## Stochastic Runge Kutta.
 
-    elif dataset==1:
+        ## calculating P[t], V[t]
+        ## P,V_t = P,V_t-1 + (K_1 /2 +K_2 /2)
+        ## K_1 = h * csmpf (P,V_t-1)+ (dBt-1-S*sqrt(h)) * Br(P,V_t-1)
+        ## K_2 = h * csmpf (P,V_t-1 + K_1)+ (dBt-1+S*sqrt(h)) * Br(P,V_t-1 + K_1)
+        ## https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_method_(SDE)
 
-        ## loading data
-        ## Pcum, Vcum, Vnrmcum, Xbnrmcum, phEcum
+        dBt=dW(h)
 
-        print(os.getcwd())
-        Pcum_df=pd.read_csv('./Pcum.csv',delimiter='\t')
-        Vcum_df=pd.read_csv('./Vcum.csv',delimiter='\t')
-        Vnrmcum_df=pd.read_csv('./Vnrmcum.csv',delimiter='\t')
-        Xbnrmcum_df=pd.read_csv('./Xbnrmcum.csv',delimiter='\t')
-        phEcum_df=pd.read_csv('./phEcum.csv',delimiter='\t')
+        S=np.random.randint(0,1)*2-1
 
-        Pcum_np=Pcum_df.to_numpy()
-        Vcum_np=Vcum_df.to_numpy()
+        K_1=np.array([Vnow,csmpf(Pnow,Vnow)])*h+np.array([np.zeros((N,2)),(dBt-S*np.sqrt(h))*brown(Vnow)])
+        K_2=np.array([Vnow+K_1[1],csmpf(Pnow+K_1[0],Vnow+K_1[1])])*h+np.array([np.zeros((N,2)),(dBt+S*np.sqrt(h))*brown(Vnow+K_1[1])])
+
+        Pnext=np.copy(Pnow)
+        Vnext=np.copy(Vnow)
+
+        Pnext+=(K_1[0]+K_2[0])/2
+        Vnext+=(K_1[1]+K_2[1])/2
+
+        Pnext=np.nan_to_num(Pnext)
+        Vnext=np.nan_to_num(Vnext)
+
+        ## calculating Vnrm and nV. 
+        s=np.power(Vnext[:,0],2)+np.power(Vnext[:,1],2)
+        s=np.nan_to_num(s)
+
+        Vnrm[t]=np.sum(s)
+
+        s=np.sqrt(s)
+        arrow_len=2-10/(np.sqrt(s)+5)
         
-        Vnrmcum=Vnrmcum_df.to_numpy()
-        Xbnrmcum=Xbnrmcum_df.to_numpy()
-        phEnrmcum=phEcum_df.to_numpy()
+        J = s[:]==0
+        s[J] = 1
 
-        Pcum=Pcum_np.reshape(-1,T,N,2)
-        Vcum=Vcum_np.reshape(-1,T,N,2)
+        nVnext=np.copy(Vnext)/np.array([s]).T*np.array([arrow_len]).T
+        nVnext=np.nan_to_num(nVnext)
 
-        print(Pinit.shape)
-
-
-    print ("End\n")
-
-    medVnrm=np.median(Vnrmcum[1:],axis=0)
-    stdVnrm=np.std(Vnrmcum[1:],axis=0)
-
-    ##Outlier detection
-    ##find appropriate constant 'cut'
-    ## that the number of trials which is further than 'cut' * std from median
-    ## is larger than 1% but not too large
-
-    select=0
-    while select==0:
-        checkI= Vnrmcum-medVnrm > cut*stdVnrm
-        selcount = np.sum(checkI,axis=1)
-        selI = selcount > 0
+        ## appending to large array. (P,V,nV,dB)
+        P=np.append(P,np.array([Pnext]),axis=0)
+        V=np.append(V,np.array([Vnext]),axis=0)
+        nV=np.append(nV,np.array([nVnext]),axis=0)
+        dB[t]=dBt    
         
-        print ('cut:%.2f select:%d' %(cut,np.sum(selI)))
+        ## calculating and appending other indicators (Pdiff, Xbnrm, phE)
+        Pdiff[t]=max(np.max(Pnext[:,0])-np.min(Pnext[:,0]),np.max(Pnext[:,1])-np.min(Pnext[:,1]))
+        Xbnrm[t]=np.power(np.max(np.power(Pnext[:,0]-Z[:,0],2)+np.power(Pnext[:,1]-Z[:,1],2)),1/2)
         
-        if np.sum(selI)<=Trial*0.01 :
-            cut-=0.25
-        else :
-            select=1
-            print('select average')
-            print(np.mean(selcount))
-            break
-    
+        for i in range(N):
+            J = A_ph[i,:]==1
+            ssq=(np.power(P[t,i,0]-Z[i,0]-P[t,:,0]+Z[:,0],2)+np.power(P[t,i,1]-Z[i,1]-P[t,:,1]+Z[:,1],2))[J]
 
-    ##Plotting and saving plot
-    # plotsave=(input("Do you want to save? Yes=else, No=0 "))
-    plotsave=1    
+            phE[t]+=np.sum(phiEest(ssq,beta,phLB))
+
+        phE[t]*=M/2
+
+        ## checking progress 
+        if t % 100 ==0 :
+            print("end %d" %t)
+
+
+    # print ("end")
+    print (Pnow)
+    print (Vnow)
+    print (Vimean)
+    print (Z)
+
+    ## Check E0>=phE+Vnrm
+    E0=Vnrm[0]+phE[0]
+    Jc = E0 < phE[:]+Vnrm[:]
+    print("over : %d" %np.sum(Jc))
+    print (np.array(range(T))[Jc])
+    Jc = phE[:] < 0
+    print("phE < 0 : %d" %np.sum(Jc))
+    print (np.array(range(T))[Jc])
+
+    for i in range(10):
+        print(Vnrm[i]+phE[i])
+
+    ## Ploting
     makeplot()
-    
-    #파일 저장은 어떻게 할지. 데이터 P,V,nV : Trial*T*N*2 / Vnrm, Xsnrm, dB : Trial*T
-    #전자 : numpy를 썼을때 data모양 재조합하기 쉬운 방식으로 모양을 바꿔주면 될 듯.
-    
-    ##Saving data
-    # if savemode==1 then save only chosen data(i.e. outliers),
-    # elif savemode==2 then save all data 
 
-    save_mode=2
-    savedata(save_mode)
+    ##saving the animation
+    save=(input("Do you want to save? Yes=else, No=0 "))
+    trialname='test'
+
+    if save!='0' :
+        trialname=input("trial name=?")
+        savename='scs-em.v.%.1f-simu-%s-k%.2fm%.2fsigma%.5f-psLB%.3fphLB%.3f-h%.5f-net%d.%d.%d.-%s.mp4' %(version,curvename,K,M,L,psLB,phLB,h,nettype[0],nettype[1],nettype[2],trialname)
+        print("Saving...")
+        if T > 900 :
+            fps = 15
+        else :
+            fps = 5
+        ani.save(savename,dpi=300,fps=fps) #fps 60은 넘지 않도록
 
     print("DONE")
 
+    ## Save snapshot
+    print("Save Snapshot")
+    snapshot_num=6
+    snapshot_time=np.zeros(snapshot_num)
+    # for i in range(snapshot_num):
+    #     snapshot_time[i]=input("i-th:" %i)
 
+    snapshot_time=[0,int(limT*0.25),int(limT*0.6),limT,min(int(limT*1.8),int(limT*0.4+T*0.6)),max(int(limT*1.8),int(limT*0.4+T*0.6)),T-1]
+    # snapshot_time=[0,10,40,100,120,140,160,170]
+
+    for i in snapshot_time:
+        savesnapshot(i)
+    
+    print("DONE")
+
+
+
+#sine 그래프일때는 fluctuation 하는 진폭이 logscale로 봤을때 거의 일정했음. 그리고 빙빙 돌면서 수렴한다는 느낌이었음.
+#K, M을 작게하고(각각 1) 이렇게 멀리 떨어뜨려놔도 초기 속도차이 10^2~10^3 스케일까지는 뜀
+#12만 프레임 dpi300 fps60 기준으로 33분 나오고 저장시간은 9시간 정도 걸림.
 
 # 중간에 물결선 넣기
 # https://matplotlib.org/3.1.0/gallery/subplots_axes_and_figures/broken_axis.html 물결선 넣기 -> 결국 그래프를 두개로 쪼개야함

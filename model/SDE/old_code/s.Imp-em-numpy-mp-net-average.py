@@ -302,17 +302,16 @@ def makeplot():
     saveplot(3,plotsave)
 
 
-    ## dx : graph of H(x,v)
+    ## dx : graph of E(X*nrm_t)
     fig=plt.figure(figsize=fig_size)
 
-    Hxv=np.mean(Xbnrmcum[1:]+Vnrmcum[1:],axis=0)
-    plt.plot(np.array(range(0,T))*h,Hxv)
+    EXbnrm=np.mean(Xbnrmcum[1:],axis=0)
+    plt.plot(np.array(range(0,T))*h,EXbnrm)
     axes=plt.axes()
     axes.set_xlim(left=0,right=(T-2)*h)
     axes.set_ylim(bottom=-0.001*2400)
 
     axes.set_xlabel('t')
-    axes.set_yscale('log')
 
     saveplot(4,plotsave)
 
@@ -344,6 +343,7 @@ def saveplot(plotnum,save) :
         plt.show()
 
 
+
 def savedata(savemode) :
     ## savemode==1 : save just outlier data and initial setting
     ## savemode==2 : save all data and initial setting
@@ -371,23 +371,24 @@ def savedata(savemode) :
 
         print("saving...")
 
-        selP_df.to_csv('selP_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        selV_df.to_csv('selV_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        selVnrm_df.to_csv('selVnrm_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        selXbnrm_df.to_csv('selXbnrm_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        seldB_df.to_csv('seldB_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        selcount_df.to_csv('selcount_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
+        selP_df.to_csv('selP_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        selV_df.to_csv('selV_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        selVnrm_df.to_csv('selVnrm_k%.2fm%.2fs%.4fnet%d%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        selXbnrm_df.to_csv('selXbnrm_k%.2fm%.2fs%.4fnet%d%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        seldB_df.to_csv('seldB_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        selcount_df.to_csv('selcount_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
 
     elif savemode==2 :
         print("data reshaping")
 
         reP = Pcum.reshape(-1,T*N*2)
         reV = Vcum.reshape(-1,T*N*2)
-        redB = dBcum.reshape(-1,T*2)
+
+        Vnrm = Vnrmcum[:,:]
+        Xbnrm = Xbnrmcum[:,:]
 
         P_df=pd.DataFrame(reP)
         V_df=pd.DataFrame(reV)
-        dBcum_df=pd.DataFrame(redB)
 
         Vnrm_df=pd.DataFrame(Vnrmcum)
         Xbnrm_df=pd.DataFrame(Xbnrmcum)
@@ -395,12 +396,11 @@ def savedata(savemode) :
         
         print("saving...")
 
-        P_df.to_csv('P_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        V_df.to_csv('V_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        Vnrm_df.to_csv('Vnrm_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        Xbnrm_df.to_csv('Xbnrm_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        phE_df.to_csv('phE_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        dBcum_df.to_csv('dBcum_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
+        P_df.to_csv('P_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        V_df.to_csv('V_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        Vnrm_df.to_csv('Vnrm_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        Xbnrm_df.to_csv('Xbnrm_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        phE_df.to_csv('phE_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
 
     # setting 을 df로 만들어서 입출력 편하게 저장하는 법 확인하기. 
     # dB, Pinit, Vinit, Z, A
@@ -414,16 +414,18 @@ def savedata(savemode) :
 
         setting_df = pd.DataFrame(setting)
 
+        dB_df=pd.DataFrame(dBcum)
         Pinit_df=pd.DataFrame(Pinit)
         Vinit_df=pd.DataFrame(Vinit)
         Z_df=pd.DataFrame(Z)
         A_df=pd.DataFrame(A)
 
-        setting_df.to_csv('setting_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        Pinit_df.to_csv('Pinit_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        Vinit_df.to_csv('Vinit_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        Z_df.to_csv('Z_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
-        A_df.to_csv('A_%s_%s.csv' %(set_name,test_name),index=False,sep="\t")
+        setting_df.to_csv('setting_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        dB_df.to_csv('dB_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        Pinit_df.to_csv('Pinit_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        Vinit_df.to_csv('Vinit_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        Z_df.to_csv('Z_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
+        A_df.to_csv('A_k%.2fm%.2fs%.4fnet%d.%d.%dN%dpsLB%.2fphLB%.2ftrial%d_cut%0.2fstd.csv' %(K,M,L,nettype[0],nettype[1],nettype[2],N,psLB,phLB,Trial,cut),index=False,sep="\t")
 
 def makenet(net_type):
     A=np.zeros((N,N))
@@ -585,160 +587,84 @@ def Curve (dom) :
 
     return Target,t
 
-def setPVinit(setting) :
-    global Pinit, Vinit
-    global Xbmean, Vimean
-
-    if setting==0:
-        Pinitlen=int((np.max(Z)-np.min(Z)))
-        # Pinitlen=20
-        coeff=0.25
-        # coeff=0.5
-        # coeff=1.25
-        
-        P_range=Pinitlen*coeff
-        print("P_range = %f" %P_range)
-        Pinit=np.random.rand(N,2)*P_range-P_range/2 
-
-        Pinit-=np.array(np.mean(Pinit[:],axis=0))
-        Pinit+=np.array(np.mean(Z[:],axis=0))
-
-        v_range=50
-        v_s=np.random.randint(-10,10,size=2)
-        v_s=np.array([0,0])
-        print("v_s = %.1f,%.1f" %(v_s[0],v_s[1]))
-        Vinit=(np.random.rand(N,2)*v_range)-v_range/2 + v_s #np.array끼리 그냥 곱하면 component 사이의 곱
-        Vimean=np.array(np.mean(Vinit[:],axis=0))
-
-        Vinit-=Vimean
-
-    else :
-        print(os.getcwd())
-        Pinit_df=pd.read_csv('./Pinit_%s.csv' %set_name,delimiter='\t')
-        Vinit_df=pd.read_csv('./Vinit_%s.csv' %set_name,delimiter='\t')
-
-        Pinit=Pinit_df.to_numpy()
-        Vinit=Vinit_df.to_numpy()
-        print(Pinit.shape)
-
-    Xbimean=np.array(np.mean(Pinit[:]-Z[:],axis=0))
-    print("\nbarX_i mean={}".format(Xbimean))
-    Vimean=np.array(np.mean(Vinit[:],axis=0))        
-    print("\nVimean={}".format(Vimean))
-
-def set_dBcum(setting) :
-    global dBcum
-
-    dBcum=np.zeros((Trial+1,2,T))
-    if setting == 0 :
-        dBcum[1:,0,:]=np.random.normal(0,np.sqrt(h),(Trial,T))
-        dBcum[1:,1,:]=np.random.randint(0,1,(Trial,T))*2-1
-
-    else :
-        dBcum_df=pd.read_csv('./dBcum.csv',delimiter='\t')
-        dBcum_np=dBcum_df.to_numpy()
-        dBcum=dBcum_np.reshape(-1,2,T)
-
-def settings(set_name) :
-    global N
-    global alpha, beta, psLB, phLB
-    global K, M, L, T
-    global curvetype,nettype, h
-    global PVinitset, dBset
-
-    if set_name=='ein' :
-        ##ein set
-        N=500
-        alpha=0.25
-        beta=alpha
-
-        psLB=0.3
-        phLB=0.1
-
-        K=0.5
-        M=7
-        L=0.00001 #L=sigma
-        T=400 #T : number of steps for solving the DE
-        T=180
-
-        curvetype=3 
-        # nettype=[0,0,0]
-        nettype=[3,1,0]
-        nettype=[4,4,0]
-        # nettype=[4,3,0]
-
-        PVinitset=1 #whether making or loading the initial data of P,V
-        h=0.025/2 #h=\Delta t ~ dt
-        dBset=0
-
-    elif set_name=='pi' :
-        ##pi set
-        N=30
-        alpha=0.25
-        beta=alpha
-
-        psLB=0.31
-        phLB=0.1
-
-        K=5
-        M=7
-        L=0.001 #L=sigma
-        T=400 #T : number of steps for solving the DE
-        T=1400
-
-        curvetype=1 
-        # nettype=[0,0,0]
-        nettype=[3,1,0]
-        # nettype=[4,3,0]
-
-        PVinitset=1 #whether making or loading the initial data of P,V
-        h=0.025 #h=\Delta t ~ dt
-        dBset=0
-
-        # cut=100
-
-def make_variables():
-    global P, V
-    global Pdiff, Vnrmi, Xbave, Xbnrmi, phEi
-
-    P=np.array([Pinit])
-    V=np.array([Vinit])
-
-    print(P[0])
-    print(V[0])
-    print(Vimean)
-
-    ## Vnrm(t) = Vnrm = sum_i |v_t^i|^2
-    s=np.power(Vinit[:,0],2)+np.power(Vinit[:,1],2)
-    Vnrmi=np.sum(s)-N*np.sum(np.power(Vimean,2))
-
-    ## Xbnrm(t) = sum_i |x*_i-x*_ave|^2 = \sum_{i} |\bar{x}_t^i-\bar{x}_t^ave|^2
-    Xbave=np.sum(Pinit,axis=0)-np.sum(Z,axis=0)
-    Xbnrmi=np.sum(np.power(Pinit[:,0]-Z[:,0]-Xbave[0],2)+np.power(Pinit[:,1]-Z[:,1]-Xbave[1],2))
-
-    ##phE(t)=\sum_{i,j\in\calE} \int_0^|\bar{x}_t^{ij}|^2 \phi(r)dr
-    phEi=0    
-    for i in range(N):
-        J = A_ph[i,:]==1
-        ssq=(np.power(P[0,i,0]-Z[i,0]-P[0,:,0]+Z[:,0],2)+np.power(P[0,i,1]-Z[i,1]-P[0,:,1]+Z[:,1],2))[J]
-
-        phEi+=np.sum(phiEest(ssq,beta,phLB))
-
-    phEi*=M/2
-
 
 if __name__ == '__main__':
     
-    version=2.00
+    version=1.85
 
     ##inputs and settings
-    set_name='pi'
-    test_name='test'
-    settings(set_name)
 
-    Trial=5
+    # N=int(input("N=?"))
+    # alpha=float(input("alpha=?"))
+    # beta=float(input("beta=? (if alpha = beta, input -1)"))
+    # if beta==-1.0 :
+    #     beta = alpha
+
+    ##ein set
+
+    N=500
+    alpha=0.25
+    beta=alpha
+
+    psLB=0.3
+    phLB=0.1
+
+    # K=float(input("K=?"))
+    # M=float(input("M=?"))
+    # L=float(input("L=?"))
+    # T=int(input("T=?"))
+
+    K=0.5
+    M=7
+    L=0.00001 #L=sigma
+    T=400 #T : number of steps for solving the DE
+    T=180
+
+    curvetype=3 
+    # nettype=[0,0,0]
+    nettype=[3,1,0]
+    nettype=[4,4,0]
+    # nettype=[4,3,0]
+
+    PVinitset=1 #whether making or loading the initial data of P,V
+    fname='_ein'
+    h=0.025/2 #h=\Delta t ~ dt
+    Trial=100
     cut=10
-    dataset=0 #whether making or loading the solutions of DE
+    dataset=0
+
+    # ##pi set
+
+    # N=30
+    # alpha=0.25
+    # beta=alpha
+
+    # psLB=0.31
+    # phLB=0.1
+
+    # # K=float(input("K=?"))
+    # # M=float(input("M=?"))
+    # # L=float(input("L=?"))
+    # # T=int(input("T=?"))
+
+    # K=5
+    # M=7
+    # L=0.001 #L=sigma
+    # T=400 #T : number of steps for solving the DE
+    # T=1400
+
+    # curvetype=1 
+    # # nettype=[0,0,0]
+    # nettype=[3,1,0]
+    # # nettype=[4,3,0]
+
+    # PVinitset=1 #whether making or loading the initial data of P,V
+    # fname='_pi'
+    # h=0.025 #h=\Delta t ~ dt
+    # Trial=100
+    # cut=100
+    # dataset=0 #whether making or loading the solutions of DE
+
 
     ##Setting target pattern. /curvetype
     #jump==1 then the "curve" is disconnected
@@ -782,10 +708,71 @@ if __name__ == '__main__':
 
     ##Setting a initial data of P,V / PVinitset
     # P : positions, V : velocity. i.e. P=\bx, V=\bv 
-    setPVinit(PVinitset)
 
-    ## Making variables : P, V, and Pdiff, Vnrm, nV, Xbnrm, phE, calH
-    make_variables()
+    if PVinitset==0:
+        Pinitlen=int((np.max(Z)-np.min(Z)))
+        # Pinitlen=20
+        coeff=0.25
+        # coeff=0.5
+        # coeff=1.25
+        
+        P_range=Pinitlen*coeff
+        print("P_range = %f" %P_range)
+        Pinit=np.random.rand(N,2)*P_range-P_range/2 
+
+        Pinit-=np.array(np.mean(Pinit[:],axis=0))
+        Pinit+=np.array(np.mean(Z[:],axis=0))
+
+        v_range=50
+        v_s=np.random.randint(-10,10,size=2)
+        v_s=np.array([0,0])
+        print("v_s = %.1f,%.1f" %(v_s[0],v_s[1]))
+        Vinit=(np.random.rand(N,2)*v_range)-v_range/2 + v_s #np.array끼리 그냥 곱하면 component 사이의 곱
+        Vimean=np.array(np.mean(Vinit[:],axis=0))
+
+        Vinit-=Vimean
+
+    else :
+        print(os.getcwd())
+        Pinit_df=pd.read_csv('./Pinit%s.csv' %fname,delimiter='\t')
+        Vinit_df=pd.read_csv('./Vinit%s.csv' %fname,delimiter='\t')
+
+        Pinit=Pinit_df.to_numpy()
+        Vinit=Vinit_df.to_numpy()
+        print(Pinit.shape)
+
+    Xbimean=np.array(np.mean(Pinit[:]-Z[:],axis=0))
+    print("\nbarX_i mean={}".format(Xbimean))
+    Vimean=np.array(np.mean(Vinit[:],axis=0))        
+    print("\nVimean={}".format(Vimean))
+
+    P=np.array([Pinit])
+    V=np.array([Vinit])
+
+    print(P[0])
+    print(V[0])
+    print(Vimean)
+
+    ## Vnrm(t) = Vnrm = sum_i |v_t^i|^2
+    s=np.power(Vinit[:,0],2)+np.power(Vinit[:,1],2)
+    Vnrmi=np.sum(s)
+
+    ##Xbnrm(t) = max |x*_i| . cf. sum_i,j |x*_i-x*_j|^2 = 2N sum_i |x*_i|^2 - 2|sum_i x*_i|^2 = \sum_{i,j} |\bar{x}_t^i-\bar{x}_t^j|^2
+    Xbnrm=np.zeros(T)
+    # Xbave=np.sum(Pinit,axis=0)-np.sum(Z,axis=0)
+    Xbnrmi=np.power(np.max(np.power(Pinit[:,0]-Z[:,0],2)+np.power(Pinit[:,1]-Z[:,1],2)),0.5)
+
+    ##phE(t)=\sum_{i,j\in\calE} \int_0^|\bar{x}_t^{ij}|^2 \phi(r)dr
+    phEi=0    
+    for i in range(N):
+        J = A_ph[i,:]==1
+        ssq=(np.power(P[0,i,0]-Z[i,0]-P[0,:,0]+Z[:,0],2)+np.power(P[0,i,1]-Z[i,1]-P[0,:,1]+Z[:,1],2))[J]
+
+        phEi+=np.sum(phiEest(ssq,beta,phLB))
+
+    phEi*=M/2
+
+    dB=np.zeros(T)
 
     #이렇게 계속 append 하는 방식 말고 cum 미리 array 만들어 놓는게 빠른지 함 확인 해봐야 + 공간 어떤 방식이 더 많이 확보 가능한가
     #-> 속도는 큰 차이 없고 오히려 append하는게 더 빠른 것 같아서 당황
@@ -798,9 +785,7 @@ if __name__ == '__main__':
     phEcum=np.array([np.zeros(T)])
 
     Xbnrmcum=np.array([np.zeros(T)])
-
-    #dBcum : saving values of dBt
-    set_dBcum(dBset)
+    dBcum=np.array([np.zeros(T)])
 
     #지금 수정하기 귀찮다고 대충 했더니 cum ndarray들은 [0]=0 이고 [1]부터 가ㅄ이들어가는 상황 
 
@@ -813,6 +798,7 @@ if __name__ == '__main__':
             V=np.zeros((T,N,2))
             Vnrm=np.zeros(T)
             Xbnrm=np.zeros(T)
+            dB=np.zeros(T)
             phE=np.zeros(T)
                     
             P[0]=np.array([Pinit])
@@ -836,8 +822,9 @@ if __name__ == '__main__':
                 ## K_2 = h * csmpf (P,V_t-1 + K_1)+ (dBt-1+S*sqrt(h)) * Br(P,V_t-1 + K_1)
                 ## https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_method_(SDE)
 
-                dBt=dBcum[trial+1,0,t]
-                S=dBcum[trial+1,1,t]
+                dBt=dW(h)
+
+                S=np.random.randint(0,1)*2-1
 
                 K_1=np.array([Vnow,csmpf(Pnow,Vnow)])*h+np.array([np.zeros((N,2)),(dBt-S*np.sqrt(h))*brown(Vnow)])
                 K_2=np.array([Vnow+K_1[1],csmpf(Pnow+K_1[0],Vnow+K_1[1])])*h+np.array([np.zeros((N,2)),(dBt+S*np.sqrt(h))*brown(Vnow+K_1[1])])
@@ -854,15 +841,13 @@ if __name__ == '__main__':
                 ## appending P,V, dB
                 P[t]=np.array([Pnext])
                 V[t]=np.array([Vnext])
+                dB[t]=dBt
 
                 ## calculating and appending Vnrm, Xbnrm, phE
                 s=np.power(Vnext[:,0],2)+np.power(Vnext[:,1],2)
 
-                Vmean=np.array(np.mean(Vnext[:],axis=0))        
-                Vnrm[t]=np.sum(s)-N*np.sum(np.power(Vmean,2))
-
-                Xbmean=np.array(np.mean(Pnext[:]-Z[:],axis=0))
-                Xbnrm[t]=np.sum(np.power(Pnext[:,0]-Z[:,0]-Xbmean[0],2)+np.power(Pnext[:,1]-Z[:,1]-Xbmean[1],2))
+                Vnrm[t]=np.sum(s)
+                Xbnrm[t]=np.power(np.max(np.power(Pnext[:,0]-Z[:,0],2)+np.power(Pnext[:,1]-Z[:,1],2)),0.5)
 
                 for i in range(N):
                     J = A_ph[i,:]==1
@@ -877,6 +862,7 @@ if __name__ == '__main__':
             Vcum=np.append(Vcum,np.array([V]),axis=0)
             Vnrmcum=np.append(Vnrmcum,np.array([Vnrm]),axis=0)
             Xbnrmcum=np.append(Xbnrmcum,np.array([Xbnrm]),axis=0)
+            dBcum=np.append(dBcum,np.array([dB]),axis=0)
             phEcum=np.append(phEcum,np.array([phE]),axis=0)
 
             if trial % 10 ==0 :
@@ -905,6 +891,7 @@ if __name__ == '__main__':
         Vcum=Vcum_np.reshape(-1,T,N,2)
 
         print(Pinit.shape)
+
 
 
     print ("End\n")
