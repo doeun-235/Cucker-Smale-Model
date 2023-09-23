@@ -512,7 +512,7 @@ def settings(set_name) :
 
         curvetype=3
         nettype=[4,4,0]
-        PVinitset=1 #whether making or loading the initial data of P,V
+        PVinitset=0#1 #whether making or loading the initial data of P,V
         dBset=0
         h=0.025/2 #h=\Delta t ~ dt
 
@@ -535,11 +535,11 @@ def settings(set_name) :
         K=5
         M=7   # L=0.00001 #L=sigma
         L=0.001
-        T=1400 #T : number of steps for solving the DE
+        T=100#1400 #T : number of steps for solving the DE
 
         curvetype=1
         nettype=[3,1,0]
-        PVinitset=1 #whether making or loading the initial data of P,V
+        PVinitset=0#1 #whether making or loading the initial data of P,V
         dBset=0
         h=0.025 #h=\Delta t ~ dt
 
@@ -723,22 +723,24 @@ if __name__ == '__main__':
 
 
     # print ("end")
-    print (Pnow)
-    print (Vnow)
-    print (Vimean)
-    print (Z)
 
-    ## Check E0>=phE+Vnrm
     E0=Vnrm[0]+phE[0]
-    Jc = E0 < phE[:]+Vnrm[:]
-    print("over : %d" %np.sum(Jc))
-    print (np.array(range(T))[Jc])
-    Jc = phE[:] < 0
-    print("phE < 0 : %d" %np.sum(Jc))
-    print (np.array(range(T))[Jc])
+    def check_settings():
+        print (Pnow)
+        print (Vnow)
+        print (Vimean)
+        print (Z)
 
-    for i in range(10):
-        print(Vnrm[i]+phE[i])
+        ## Check E0>=phE+Vnrm
+        Jc = E0 < phE[:]+Vnrm[:]
+        print("over : %d" %np.sum(Jc))
+        print (np.array(range(T))[Jc])
+        Jc = phE[:] < 0
+        print("phE < 0 : %d" %np.sum(Jc))
+        print (np.array(range(T))[Jc])
+
+        for i in range(10):
+            print(Vnrm[i]+phE[i])
 
     ## Ploting
     makeplot()
