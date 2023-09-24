@@ -143,13 +143,13 @@ def makeplot():
 
         reddot, =cx_down.plot([0],[Vnrm[0]],'r.') #왠지 모르겠는데 reddot뒤의 ,을 빼면 animation 부분에서 에러남.
 
-    ##plotting calH
-    dx.set_title(r'$\mathcal{H}({\bf x}, {\bf v})$')
-    dx.set_yscale('log')
+    ##plotting Xbnrm
+    dx.set_title(r'$\max_{i=1,\cdots, N} |\bar{x}_t^i|$')
+    # dx.set_yscale('log')
     dx.plot(np.arange(0,T)*h,np.zeros(T),c='k',linewidth=0.8)
     
-    dx.plot(np.arange(0,T)*h,Xbnrm+Vnrm)
-    reddot2, =dx.plot([0],[Xbnrm[0]+Vnrm[0]],'r.') #왠지 모르겠는데 reddot뒤의 ,을 빼면 animation 부분에서 에러남. 
+    dx.plot(np.arange(0,T)*h,Xbnrm)
+    reddot2, =dx.plot([0],[Xbnrm[0]],'r.') #왠지 모르겠는데 reddot뒤의 ,을 빼면 animation 부분에서 에러남. 
     dx.set_xlim(0,(T-2)*h)
 
 
@@ -223,6 +223,8 @@ def savesnapshot(s_time) :
     plt.savefig('graph_net%d.%d.%d.-%s-%.3f.pdf' %(nettype[0],nettype[1],nettype[2],trialname,s_time*h),bbox_inches='tight', pad_inches=0.02)
     print("image saved_%d" %s_time)
 
+
+
 def _update_plot (i,fig,scat,qax,ax,reddot,reddot2) : #making animationed plot
 
     global xylen
@@ -260,71 +262,13 @@ def _update_plot (i,fig,scat,qax,ax,reddot,reddot2) : #making animationed plot
     
     # print ('Frames:%d' %i)
     reddot.set_data(i*h,Vnrm[i])
-    reddot2.set_data(i*h,Xbnrm[i]+Vnrm[i])
+    reddot2.set_data(i*h,Xbnrm[i])
     
     return scat,qax,ax,reddot,reddot2
 
 def phiEest(ssq,b,LB): #estimating energy about phi function
     phE=(np.power(1+ssq,1-b)-1)/(1-b)+ssq*LB
     return phE
-
-def makenet(net_type):
-    A=np.zeros((N,N))
-    
-    if net_type==0 :
-        A[:,:]=1
-        for i in range(N) :
-            A[i,i]=0
-
-    elif net_type==1 :
-        for i in range(N-1) :
-            A[i,i+1] = 1
-
-        A[0,1:N]=1
-        A[0:int(N/2)-1,int(N/2)-1]=1
-        A[int(N/2)-1,int(N/2):N]=1
-        A[:N-1,N-1]=1
-
-        A=A+A.T
-
-    elif net_type==2 :
-        for i in range(N-1) :
-            A[i,i+1] = 1
-
-        A=A+A.T
-
-    elif net_type==3 :
-        if N % 2 != 0 :
-            step=2
-        elif N % 4 == 0 :
-            step=N/2-1
-        else :
-            step=N/2-2
-
-        for i in range(N) :
-            A[i,int((i+step)%N)]=1
-            A[i,int((i-step)%N)]=1
-
-    elif net_type==4 :
-        for i in range(N-1) :
-            A[i,i+1] = 1
-
-        A=A+A.T
-
-        for i in range(int(N/10)) :
-            A[i*10,:]=1
-            A[:,i*10]=1
-            A[i*10,i*10]=0
-
-    elif net_type==5 :
-        for i in range(N-1) :
-            A[i,i+1] = 1
-        A[N-1,0]=1
-
-        A=A+A.T
-
-
-    return A
 
 def weight(s,b,LB):
     a = np.power(1+s,-b) + LB
@@ -383,7 +327,7 @@ def theta(x):
     a=np.heaviside(x,0)
     return a
 
-def Curve(dom) :
+def Curve (dom) :
 
     num=N
 
@@ -433,162 +377,10 @@ def Curve(dom) :
 
     return Target,t
 
-def setPVinit(setting) :
-    global Pinit, Vinit
-    global Xbmean, Vimean
-
-    if setting==0:
-        Pinitlen=int((np.max(Z)-np.min(Z)))
-        # Pinitlen=20
-        coeff=0.5
-        # coeff=1.25
-        P_range=Pinitlen*coeff
-        print("P_range = %f" %P_range)
-        Pinit=np.random.rand(N,2)*P_range-P_range/2 
-
-        Pinit-=np.array(np.mean(Pinit[:],axis=0))
-        Pinit+=np.array(np.mean(Z[:],axis=0))
-        print(np.mean(Z[:],axis=0))
-
-        v_range=50
-        v_s=np.random.randint(-10,10,size=2)
-        v_s=np.array([0,0])
-        print("v_s = %.1f,%.1f" %(v_s[0],v_s[1]))
-        Vinit=(np.random.rand(N,2)*v_range)-v_range/2 + v_s #np.array끼리 그냥 곱하면 component 사이의 곱
-        Vimean=np.array(np.mean(Vinit[:],axis=0))
-
-        Vinit-=Vimean
-
-    else :
-        print(os.getcwd())
-        Pinit_df=pd.read_csv('./Pinit_%s.csv' %set_name,delimiter='\t')
-        Vinit_df=pd.read_csv('./Vinit_%s.csv' %set_name,delimiter='\t')
-
-        Pinit=Pinit_df.to_numpy()
-        Vinit=Vinit_df.to_numpy()
-
-    Xbmean=np.array(np.mean(Pinit[:]-Z[:],axis=0))
-    print("\nbarX_0 mean={}".format(Xbmean))
-    Vimean=np.array(np.mean(Vinit[:],axis=0))        
-    print("\nV_0 mean={}".format(Vimean))
-
-def set_dBt(setting) :
-    global dB
-
-    if setting == 0 :
-        dB=np.array([np.random.normal(0,np.sqrt(h),T),np.random.randint(0,1,T)*2-1])
-
-    else :
-        dB_df=pd.read_csv('./dB_once.csv',delimiter='\t')
-        dB=dB_df.to_numpy()
-
-def settings(set_name) :
-    global N
-    global alpha, beta, psLB, phLB
-    global K, M, L, T
-    global curvetype,nettype, h
-    global PVinitset, dBset
-
-    if set_name=='ein' :
-        ## ein set
-
-        N=500
-
-        ## psi(r^2) = (1+r^2)^(-alpha) + psLB, phi(r)=(1+r^2)^(-beta) + phLB
-        alpha=0.25
-        beta=alpha
-        psLB=0.3
-        phLB=0.1
-
-        # K=float(input("K=?"))
-        # M=float(input("M=?"))
-        # L=float(input("L=?"))
-        # T=int(input("T=?"))
-
-        K=0.5
-        M=7   # L=0.00001 #L=sigma
-        L=0.00001
-        T=180 #T : number of steps for solving the DE
-
-        curvetype=3
-        nettype=[4,4,0]
-        PVinitset=1 #whether making or loading the initial data of P,V
-        dBset=0
-        h=0.025/2 #h=\Delta t ~ dt
-
-    elif set_name=='pi' :
-        ##pi set
-
-        N=30
-
-        ## psi(r^2) = (1+r^2)^(-alpha) + psLB, phi(r)=(1+r^2)^(-beta) + phLB
-        alpha=0.25
-        beta=alpha
-        psLB=0.31
-        phLB=0.1
-
-        # K=float(input("K=?"))
-        # M=float(input("M=?"))
-        # L=float(input("L=?"))
-        # T=int(input("T=?"))
-
-        K=5
-        M=7   # L=0.00001 #L=sigma
-        L=0.001
-        T=1400 #T : number of steps for solving the DE
-
-        curvetype=1
-        nettype=[3,1,0]
-        PVinitset=1 #whether making or loading the initial data of P,V
-        dBset=0
-        h=0.025 #h=\Delta t ~ dt
-
-def make_variables():
-    global P, V
-    global Pdiff, Vnrm, nV, Xbnrm, phE
-
-    P=np.array([Pinit])
-    V=np.array([Vinit])
-
-    # Pdiff(t) = max_k=1,2 (max_i,j |(x_t^i)_k-(x_t^j)_k|) : used when plotting
-    Pdiff=np.zeros(T)
-    Pdiff[0]=max(np.max(Pinit[:,0])-np.min(Pinit[:,0]),np.max(Pinit[:,1])-np.min(Pinit[:,1]))
-
-    #Vnrm(t) = Vnrm = sum_i |v_t^i - v^ave|^2
-    #nV(t) = normalized V -> direction of each v^i vectors
-    s=np.sqrt(np.power(Vinit[:,0],2)+np.power(Vinit[:,1],2))
-    
-    Vnrm=np.zeros(T)
-    Vnrm[0]=np.sum(s)-N*np.sum(np.power(Vimean,2))
-    
-    ## when calculating nV, s shouldn't be 0
-    J = s[:]==0
-    s[J] = 1
-
-    arrow_len=2-10/(np.sqrt(s)+5)
-
-    nVinit=np.copy(Vinit)/np.array([s]).T * np.array([arrow_len]).T
-    nV=np.array([nVinit])
-    
-    #Xbnrm(t) = sum_i |x*_i-x*_ave|^2 = \sum_{i} |\bar{x}_t^i-\bar{x}_t^ave|^2
-    #p.s. when v^ave is not 0, then \sum_i |\bar{x^i}|^2 is increasing in the end. 
-    Xbnrm=np.zeros(T)
-    Xbnrm[0]=np.sum(np.power(Pinit[:,0]-Z[:,0]-Xbmean[0],2)+np.power(Pinit[:,1]-Z[:,1]-Xbmean[1],2))
-
-    #phE(t)=\sum_{i,j\in\calE} \int_0^|\bar{x}_t^{ij}|^2 \phi(r)dr
-    phE=np.zeros(T)
-    for i in range(N):
-        J = A_ph[i,:]==1
-        ssq=(np.power(P[0,i,0]-Z[i,0]-P[0,:,0]+Z[:,0],2)+np.power(P[0,i,1]-Z[i,1]-P[0,:,1]+Z[:,1],2))[J]
-
-        phE[0]+=np.sum(phiEest(ssq,beta,phLB))
-
-    phE[0]*=M/2
-
 
 if __name__ == '__main__':
     
-    version=2.0
+    version=1.8
 
     # N=int(input("N=?"))
 
@@ -598,8 +390,58 @@ if __name__ == '__main__':
     # if beta==-1.0 :
     #     beta = alpha
 
-    set_name='pi'
-    settings(set_name)
+    # ## ein set
+
+    # N=500
+
+    # ## psi(r^2) = (1+r^2)^(-alpha) + psLB, phi(r)=(1+r^2)^(-beta) + phLB
+    # alpha=0.25
+    # beta=alpha
+    # psLB=0.3
+    # phLB=0.1
+
+    # # K=float(input("K=?"))
+    # # M=float(input("M=?"))
+    # # L=float(input("L=?"))
+    # # T=int(input("T=?"))
+
+    # K=0.5
+    # M=7   # L=0.00001 #L=sigma
+    # L=0.00001
+    # T=180 #T : number of steps for solving the DE
+
+    # curvetype=3
+    # nettype=[4,4,0]
+    # PVinitset=1 #whether making or loading the initial data of P,V
+    # fname='_ein'
+    # h=0.025/2 #h=\Delta t ~ dt
+
+    ##pi set
+
+    N=30
+
+    ## psi(r^2) = (1+r^2)^(-alpha) + psLB, phi(r)=(1+r^2)^(-beta) + phLB
+    alpha=0.25
+    beta=alpha
+    psLB=0.31
+    phLB=0.1
+
+    # K=float(input("K=?"))
+    # M=float(input("M=?"))
+    # L=float(input("L=?"))
+    # T=int(input("T=?"))
+
+    K=5
+    M=7   # L=0.00001 #L=sigma
+    L=0.001
+    T=1400 #T : number of steps for solving the DE
+
+    curvetype=1
+    nettype=[3,1,0]
+    PVinitset=1 #whether making or loading the initial data of P,V
+    fname='_pi'
+    h=0.025 #h=\Delta t ~ dt
+
 
     # making target pattern : Z
 
@@ -636,20 +478,148 @@ if __name__ == '__main__':
 
     for ind in range(3):
 
-        A=makenet(nettype[ind])
+        A=np.zeros((N,N))
+        
+        if nettype[ind]==0 :
+            A[:,:]=1
+            for i in range(N) :
+                A[i,i]=0
+
+        elif nettype[ind]==1 :
+            for i in range(N-1) :
+                A[i,i+1] = 1
+
+            A[0,1:N]=1
+            A[0:int(N/2)-1,int(N/2)-1]=1
+            A[int(N/2)-1,int(N/2):N]=1
+            A[:N-1,N-1]=1
+
+            A=A+A.T
+
+        elif nettype[ind]==2 :
+            for i in range(N-1) :
+                A[i,i+1] = 1
+
+            A=A+A.T
+
+        elif nettype[ind]==3 :
+            if N % 2 != 0 :
+                step=2
+            elif N % 4 == 0 :
+                step=N/2-1
+            else :
+                step=N/2-2
+
+            for i in range(N) :
+                A[i,int((i+step)%N)]=1
+                A[i,int((i-step)%N)]=1
+
+        elif nettype[ind]==4 :
+            for i in range(N-1) :
+                A[i,i+1] = 1
+
+            A=A+A.T
+
+            for i in range(int(N/10)) :
+                A[i*10,:]=1
+                A[:,i*10]=1
+                A[i*10,i*10]=0
+
+        elif nettype[ind]==5 :
+            for i in range(N-1) :
+                A[i,i+1] = 1
+
+            A[N-1,0] = 1
+            
+            A=A+A.T
+
+
 
         globals()['A_{}'.format(zeta[ind])]=np.copy(A)
    
+
     ## Setting initial values of P,V
     ## (positions and velocities of particles, respectively).
     ## i.e. P=\bx, V=\bv 
-    setPVinit(PVinitset)
 
-    ## Making variables : P, V, and Pdiff, Vnrm, nV, Xbnrm, phE, calH
-    make_variables()
+    if PVinitset==0:
+        Pinitlen=int((np.max(Z)-np.min(Z)))
+        # Pinitlen=20
+        coeff=0.5
+        # coeff=1.25
+        P_range=Pinitlen*coeff
+        print("P_range = %f" %P_range)
+        Pinit=np.random.rand(N,2)*P_range-P_range/2 
+
+        Pinit-=np.array(np.mean(Pinit[:],axis=0))
+        Pinit+=np.array(np.mean(Z[:],axis=0))
+        print(np.mean(Z[:],axis=0))
+
+        v_range=50
+        v_s=np.random.randint(-10,10,size=2)
+        v_s=np.array([0,0])
+        print("v_s = %.1f,%.1f" %(v_s[0],v_s[1]))
+        Vinit=(np.random.rand(N,2)*v_range)-v_range/2 + v_s #np.array끼리 그냥 곱하면 component 사이의 곱
+        Vimean=np.array(np.mean(Vinit[:],axis=0))
+
+        Vinit-=Vimean
+
+    else :
+        print(os.getcwd())
+        Pinit_df=pd.read_csv('./Pinit%s.csv' %fname,delimiter='\t')
+        Vinit_df=pd.read_csv('./Vinit%s.csv' %fname,delimiter='\t')
+
+        Pinit=Pinit_df.to_numpy()
+        Vinit=Vinit_df.to_numpy()
+
+    Xbimean=np.array(np.mean(Pinit[:]-Z[:],axis=0))
+    print("\nbarX_0 mean={}".format(Xbimean))
+    Vimean=np.array(np.mean(Vinit[:],axis=0))        
+    print("\nV_0 mean={}".format(Vimean))
+
+    P=np.array([Pinit])
+    V=np.array([Vinit])
+
+    ## Pdiff(t) = max_k=1,2 (max_i,j |(x_t^i)_k-(x_t^j)_k|) : used when plotting
+    Pdiff=np.zeros(T)
+    Pdiff[0]=max(np.max(Pinit[:,0])-np.min(Pinit[:,0]),np.max(Pinit[:,1])-np.min(Pinit[:,1]))
+
+    # print(P[0])
+    # print(V[0])
+
+    #Vnrm(t) = Vnrm = sum_i |v_t^i|^2
+    #nV(t) = normalized V -> direction of each v^i vectors
+    s=np.sqrt(np.power(Vinit[:,0],2)+np.power(Vinit[:,1],2))
+    
+    Vnrm=np.zeros(T)
+    Vnrm[0]=np.sum(np.power(s,2))
+    
+    ## when calculating nV, s shouldn't be 0
+    J = s[:]==0
+    s[J] = 1
+
+    arrow_len=2-10/(np.sqrt(s)+5)
+
+    nVinit=np.copy(Vinit)/np.array([s]).T * np.array([arrow_len]).T
+    nV=np.array([nVinit])
+    
+    #Xbnrm(t) = sum_i,j |x*_i-x*_j|^2 = 2N sum_i |x*_i|^2 - 2|sum_i x*_i|^2 = \sum_{i,j} |\bar{x}_t^i-\bar{x}_t^j|^2
+    #p.s. when v^ave is not 0, then \sum_i |\bar{x^i}|^2 is increasing in the end. 
+    Xbnrm=np.zeros(T)
+    Xbnrm[0]=np.power(np.max(np.power(Pinit[:,0]-Z[:,0],2)+np.power(Pinit[:,1]-Z[:,1],2)),1/2)
+
+    #phE(t)=\sum_{i,j\in\calE} \int_0^|\bar{x}_t^{ij}|^2 \phi(r)dr
+    phE=np.zeros(T)
+    for i in range(N):
+        J = A_ph[i,:]==1
+        ssq=(np.power(P[0,i,0]-Z[i,0]-P[0,:,0]+Z[:,0],2)+np.power(P[0,i,1]-Z[i,1]-P[0,:,1]+Z[:,1],2))[J]
+
+        phE[0]+=np.sum(phiEest(ssq,beta,phLB))
+
+    phE[0]*=M/2
 
     #dB : saving values of dBt
-    set_dBt(dBset)
+    dB=np.zeros(T)
 
     ## Solving DE
 
@@ -667,8 +637,9 @@ if __name__ == '__main__':
         ## K_2 = h * csmpf (P,V_t-1 + K_1)+ (dBt-1+S*sqrt(h)) * Br(P,V_t-1 + K_1)
         ## https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_method_(SDE)
 
-        dBt=dB[0,t]
-        S=dB[1,t]
+        dBt=dW(h)
+
+        S=np.random.randint(0,1)*2-1
 
         K_1=np.array([Vnow,csmpf(Pnow,Vnow)])*h+np.array([np.zeros((N,2)),(dBt-S*np.sqrt(h))*brown(Vnow)])
         K_2=np.array([Vnow+K_1[1],csmpf(Pnow+K_1[0],Vnow+K_1[1])])*h+np.array([np.zeros((N,2)),(dBt+S*np.sqrt(h))*brown(Vnow+K_1[1])])
@@ -686,8 +657,7 @@ if __name__ == '__main__':
         s=np.power(Vnext[:,0],2)+np.power(Vnext[:,1],2)
         s=np.nan_to_num(s)
 
-        Vmean=np.array(np.mean(Vnext[:],axis=0))        
-        Vnrm[t]=np.sum(s)-N*np.sum(np.power(Vmean,2))
+        Vnrm[t]=np.sum(s)
 
         s=np.sqrt(s)
         arrow_len=2-10/(np.sqrt(s)+5)
@@ -702,13 +672,12 @@ if __name__ == '__main__':
         P=np.append(P,np.array([Pnext]),axis=0)
         V=np.append(V,np.array([Vnext]),axis=0)
         nV=np.append(nV,np.array([nVnext]),axis=0)
+        dB[t]=dBt    
         
         ## calculating and appending other indicators (Pdiff, Xbnrm, phE)
         Pdiff[t]=max(np.max(Pnext[:,0])-np.min(Pnext[:,0]),np.max(Pnext[:,1])-np.min(Pnext[:,1]))
-
-        Xbmean=np.array(np.mean(Pnext[:]-Z[:],axis=0))
-        Xbnrm[t]=np.sum(np.power(Pnext[:,0]-Z[:,0]-Xbmean[0],2)+np.power(Pnext[:,1]-Z[:,1]-Xbmean[1],2))
-
+        Xbnrm[t]=np.power(np.max(np.power(Pnext[:,0]-Z[:,0],2)+np.power(Pnext[:,1]-Z[:,1],2)),1/2)
+        
         for i in range(N):
             J = A_ph[i,:]==1
             ssq=(np.power(P[t,i,0]-Z[i,0]-P[t,:,0]+Z[:,0],2)+np.power(P[t,i,1]-Z[i,1]-P[t,:,1]+Z[:,1],2))[J]

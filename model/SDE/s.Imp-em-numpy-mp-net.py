@@ -23,8 +23,13 @@ import pandas as pd
 
 #np 참고 http://taewan.kim/post/numpy_cheat_sheet/
 
-def makeplot():
+def set_dot(Domain,dotcolors,size=1):
+    if dotcolors==1: dotc,dotcmap = Domain,'twilight_shifted'
+    elif dotcolors==2: dotc,dotcmap = -Domain,'nipy_spectral'
+    elif dotcolors==0: dotc,dotcmap = 'tab:blue','nipy_spectral'
+    return 600/len(Domain)*size,dotc,dotcmap
 
+def makeplot(Pdiff,Domain,P,nV,Vnrm,Xbnrm,phE,h,T,Vimean,dotcolors=0,graphcut=0):
     fig=plt.figure(constrained_layout=True)
     spec=gridspec.GridSpec(ncols=20,nrows=40,figure=fig)
 
@@ -33,253 +38,191 @@ def makeplot():
     dx=fig.add_subplot(spec[:,14:19])
 
     ## plotting move of the particles
-
     ##choosing frame length
-
-    #그림을 어떻게 그릴지 : (Xmax-Xmin)+(Ymax-Ymin)이 제일 클 때 까지는 개중에 Xinf~Xsup,Yinf~Ysup으로
-    #-> 뭔가 사이즈는 limsup같은 느낌으로 하고 중앙점은 움직임 따라가는 식으로 할 수 있을 것 같은데
-    # 프레임 사이즈가 큰 차이 안나면 고정으로 가야지 덜 어지러울 듯.
-
-    # X,Y차이값이 max일때 까지는 scale 유지하는 것으로.
-
-    global limT
     limT=np.argmax(Pdiff)
-    #np.argmax(np.amax(np.amax(P,axis=1)-np.amin(P,axis=1),axis=1)) 로도 찾을 수 있지만 이미 for 돌리기도 했고 len구해야 하기 때문에 걍 Pdiff 만듦
-    #근데 어차피 매번 Xmin Ymin 구할거면 것도 걍 미리 구해놓지? 이건 지금 바꾸는건 귀찮아 나중에.
-      
-    print(limT)
-    #즉 limT까지는 축 고정하고 그 이후로는 원래는 scale 고정하려고 했는데 의미 불분명하니 걍 scale decreasing 하게 잡는 것으로
+    point_range =np.concatenate((np.max(P[:limT+1],axis=0),np.min(P[:limT+1],axis=0)),axis=0) #TODO have to check axis
+    Xlim,Ylim,xylen = choose_XYlim(point_range,10*Pdiff[limT],Pdiff[0],limT>=T*0.3+100)
 
-    Xmax = np.max(P[:limT+1,:,0])
-    Ymax = np.max(P[:limT+1,:,1])
-    Xmin = np.min(P[:limT+1,:,0])
-    Ymin = np.min(P[:limT+1,:,1])
-
-    CenterX = (Xmin+Xmax)/2
-    CenterY = (Ymin+Ymax)/2
-
-    global xylen
-    xylen=np.nan_to_num(max(Xmax-Xmin,Ymax-Ymin))
-
-    if xylen >= 10*Pdiff[limT] or limT >= T*0.3+100:
-        xylen=Pdiff[0]
-        limT=0
-        Xmin=np.min(P[0,:,0])
-        Ymin=np.min(P[0,:,1])
-
-    ax.set_xlim([np.nan_to_num(CenterX-xylen/2*1.15),np.nan_to_num(CenterX+xylen/2*1.15)])
-    ax.set_ylim([np.nan_to_num(CenterY-xylen/2*1.15),np.nan_to_num(CenterY+xylen/2*1.15)])
+    ax.set_xlim(Xlim)
+    ax.set_ylim(Ylim)
     ax.set_aspect('equal')
 
-    ax.set_title(r'$K=%.2f,M=%.2f,\sigma=%.6f$'%(K,M,L)+'\n'+r'$\alpha=%.3f,\beta=%.3f$'%(alpha,beta)+'\n'+r'$\psi^{min}=%.2f,\phi^{min}=%.2f$' %(psLB,phLB),fontsize=8)
-    ax.set_xlabel(r'$\Delta t=%.5f, step:%d, time=%.5f$'%(h,0,0)+'\n(frame_length)=%.3f\n' %xylen+r'$v_0^{ave}=(%.3f,%.3f)$'%(Vimean[0],Vimean[1])+', '+r'$v_t^{ave}=(%.6f,%.6f)$' %(np.mean(V[i,:,0]),np.mean(V[i,:,1])),fontsize=8)
-
-    dotsize=600/len(Domain)
-
-    global dotcolors
-    global dotcmap
-
-    dotcolors=0
-    if dotcolors==1:
-        dotc=Domain
-        dotcmap='twilight_shifted'
-    elif dotcolors==2:
-        dotc=-Domain
-        dotcmap='nipy_spectral'
-    elif dotcolors==0:
-        dotc='tab:blue'
-        dotcmap='nipy_spectral'
-
-
+    plot_title = (r'$K=%.2f,M=%.2f,\sigma=%.6f$'%(K,M,L)+'\n'
+                  +r'$\alpha=%.3f,\beta=%.3f$'%(alpha,beta)+'\n'
+                  +r'$\psi^{min}=%.2f,\phi^{min}=%.2f$' %(psLB,phLB))
+    ax.set_title(plot_title,fontsize=8)
+    ax.set_xlabel(choose_xlabel(h,0,xylen,Vimean,V),fontsize=8)
+    dotsize,dotc,dotcmap=set_dot(Domain,dotcolors)
     scat=ax.scatter(P[0].T[0], P[0].T[1],s=dotsize,c=dotc, cmap=dotcmap) #P[0].T[1] = (transpose of P[0])[1]. cmap=따라 컬러 스펙트럼 바뀜
     scat.set_alpha(0.6)
     qax=ax.quiver(P[0].T[0],P[0].T[1],nV[0].T[0],nV[0].T[1],angles='xy',width=0.001,scale=70/2)
 
     ##plotting Vnrm
-
-    SupVnrm=np.max(Vnrm)
-
-    graphcut=0
-
+    SupVnrm,E0=np.max(Vnrm),Vnrm[0]+phE[0]
     if graphcut==0 :
         cx=fig.add_subplot(spec[:,9:14]) 
         cx.set_title(r'$\Vert {\bf v}_t \Vert $')
-        # cx.set_yscale('log')
         cx.plot(np.arange(0,T)*h,np.zeros(T),c='k',linewidth=0.8)
-
         cx.plot(np.arange(0,T)*h,Vnrm,linewidth=0.7, c='teal', label=r'$\Vert {\bf v}_t \Vert $')
-        cx.plot(np.arange(0,T)*h,[E0 for tt in range(T)],linewidth=0.5,c='gold',label=r'$E_0$')
+        cx.plot(np.arange(0,T)*h,[E0]*T,linewidth=0.5,c='gold',label=r'$E_0$')
         cx.plot(np.arange(0,T)*h,phE+Vnrm,linewidth=0.5,c='indianred',label=r'$E_t$')
         cx.plot(np.arange(0,T)*h,E0-phE, alpha=0.8,linewidth=0.5,c='forestgreen',label=r'$E_0-E_t^{\phi}$')
-        
         cx.set_xlim(0,(T-2)*h)
         cx.legend(loc='best',fontsize=5)
 
         reddot, =cx.plot([0],[Vnrm[0]],'r.') #왠지 모르겠는데 reddot뒤의 ,을 빼면 animation 부분에서 에러남. 
 
     else :
-
         cx_up=fig.add_subplot(spec[0:4,9:14]) 
         cx_down=fig.add_subplot(spec[4:,9:14])
-
         cx_up.set_title(r'$\|\|v_t\|\|^2$')
-        # cx.set_yscale('log')
-        
-        cx_up.plot(np.arange(0,T)*h,[E0 for tt in range(T)],linewidth=0.5,c='gold',label=r'$E_0$')
+        cx_up.plot(np.arange(0,T)*h,[E0]*T,linewidth=0.5,c='gold',label=r'$E_0$')
         cx_up.plot(np.arange(0,T)*h,E0-phE, alpha=0.8,linewidth=0.5,c='forestgreen',label=r'$E_0-E_\phi(t)$')
-
-        cx_down.plot(np.arange(0,T)*h,[E0 for tt in range(T)],linewidth=0.5,c='gold',label=r'$E_0$')
+        cx_down.plot(np.arange(0,T)*h,[E0]*T,linewidth=0.5,c='gold',label=r'$E_0$')
         cx_down.plot(np.arange(0,T)*h,Vnrm,linewidth=0.7, c='teal', label=r'$\|\|v_t\|\|^2$')
         cx_down.plot(np.arange(0,T)*h,E0-phE, alpha=0.8,linewidth=0.5,c='forestgreen',label=r'$E_0-E_\phi(t)$')
         cx_down.legend(loc='best',fontsize=5)
-
         cx_up.set_ylim(0.8*E0,E0*1.05)
         cx_down.set_ylim(bottom=min(np.min(Vnrm)*(-0.5),SupVnrm*(-0.01)),top=SupVnrm*1.2)
-
         cx_up.spines['bottom'].set_visible(False)
         cx_down.spines['top'].set_visible(False)
         cx_up.xaxis.set_visible(False)
         cx_down.xaxis.tick_bottom()
-
         reddot, =cx_down.plot([0],[Vnrm[0]],'r.') #왠지 모르겠는데 reddot뒤의 ,을 빼면 animation 부분에서 에러남.
 
-    ##plotting Xbnrm
-    dx.set_title(r'$\max_{i=1,\cdots, N} |\bar{x}_t^i|$')
-    # dx.set_yscale('log')
+    ##plotting calH
+    dx.set_title(r'$\mathcal{H}({\bf x}, {\bf v})$')
+    dx.set_yscale('log')
     dx.plot(np.arange(0,T)*h,np.zeros(T),c='k',linewidth=0.8)
-    
-    dx.plot(np.arange(0,T)*h,Xbnrm)
-    reddot2, =dx.plot([0],[Xbnrm[0]],'r.') #왠지 모르겠는데 reddot뒤의 ,을 빼면 animation 부분에서 에러남. 
+    dx.plot(np.arange(0,T)*h,Xbnrm+Vnrm)
+    reddot2, =dx.plot([0],[Xbnrm[0]+Vnrm[0]],'r.') #왠지 모르겠는데 reddot뒤의 ,을 빼면 animation 부분에서 에러남. 
     dx.set_xlim(0,(T-2)*h)
-
-
-    global ani
-    ani = animation.FuncAnimation(fig,_update_plot,fargs=(fig,scat,qax,ax,reddot,reddot2),frames=T-1,interval=100/6,save_count=T-1)
-
+   
+    ani = animation.FuncAnimation(fig,_update_plot,fargs=(fig,scat,qax,ax,reddot,reddot2,h,xylen,Vimean,V,limT,P,nV,Vnrm,Xbnrm),frames=T-1,interval=100/6,save_count=T-1)
     #interval이 너무 작으니깐(fps가 너무 커지니깐) save가 안됨-파일을 열때 에러남.
 
     plt.show()
+    return fig,ani
 
-def savesnapshot(s_time) :
+def _update_plot (i,fig,scat,qax,ax,reddot,reddot2,h,xylen,Vimean,V,limT,P,nV,Vnrm,Xbnrm) : #making animationed plot
+
+    ax.set_xlabel(choose_xlabel(h,i,xylen,Vimean,V),fontsize=8)
+
+    if limT < i :
+        Xlim,Ylim,xylen = choose_XYlim(P[i],10*Pdiff[i],Pdiff[i])
+        ax.set_xlim(Xlim)
+        ax.set_ylim(Ylim)
+
+        frame_v=((np.min(P[i+1,:,0])-np.min(P[i,:,0]))/h,(np.min(P[i+1,:,1])-np.min(P[i,:,1]))/h)
+        ax.set_xlabel(choose_xlabel_2(h,i,xylen,Vimean,V,frame_v),fontsize=8)
+        #global 선언이 안되어서 꼬인다는데 이유는 모르겠음. 해주니깐 해결되긴 함
+
+    scat.set_offsets(P[i])
+    qax.set_offsets(P[i])
+    qax.set_UVC(nV[i].T[0],nV[i].T[1])
+    reddot.set_data(i*h,Vnrm[i])
+    reddot2.set_data(i*h,Xbnrm[i]+Vnrm[i])
+
+    return scat,qax,ax,reddot,reddot2
+
+def choose_XYlim(point,xylen_lim,xylen_val,xylen_cond=False):
+    Xmax,Xmin = np.max(point[:,0]),np.min(point[:,0])
+    Ymax,Ymin = np.max(point[:,1]),np.min(point[:,1])
+    CenterX,CenterY = (Xmin+Xmax)/2,(Ymin+Ymax)/2
+    xylen=np.nan_to_num(max(Xmax-Xmin,Ymax-Ymin))
+    if xylen >= xylen_lim or xylen_cond: xylen = xylen_val
+    return ([np.nan_to_num(CenterX-xylen/2*1.15),np.nan_to_num(CenterX+xylen/2*1.15)],
+            [np.nan_to_num(CenterY-xylen/2*1.15),np.nan_to_num(CenterY+xylen/2*1.15)],xylen)
+
+def save_snapshot(P,nV,s_time,dotcolors,nettype,trialname) :
     fig=plt.figure(figsize=(3,3))
     ax=plt.axes()
     ax.set_aspect('equal')
     
-    # if limT < s_time :
-
-    #     Xmin = np.min(P[s_time,:,0])
-    #     Ymin = np.min(P[s_time,:,1])
-       
-    #     xylen=np.max(Pdiff[s_time:])
-
-    #     #If I choose the condition more sutiable, then the animation will be fancier
-    #     if xylen>=10*Pdiff[s_time] :
-    #         xylen=Pdiff[s_time] 
-
-    #     ax.set_xlim([Xmin-xylen*0.15,Xmin+xylen*1.15])
-    #     ax.set_ylim([Ymin-xylen*0.15,Ymin+xylen*1.15])
-
-
-    Xmin = np.min(P[s_time,:,0])
-    Ymin = np.min(P[s_time,:,1])
-    Xmax = np.max(P[s_time,:,0])
-    Ymax = np.max(P[s_time,:,1])
-
-    CenterX = (Xmin+Xmax)/2
-    CenterY = (Ymin+Ymax)/2
-    
-    # xylen=2*max(max(np.abs(Xmean-Xmax),np.abs(Xmean-Xmin)),max(np.abs(Ymean-Ymax),np.abs(Ymean-Ymin)))
-    xylen=max(Xmax-Xmin,Ymax-Ymin)
-
-    # #If I choose the condition more sutiable, then the animation will be fancier
-    # if xylen>=10*Pdiff[s_time] :
-    #     xylen=Pdiff[s_time] 
-
-    ax.set_xlim([CenterX-xylen/2*1.15,CenterX+xylen/2*1.15])
-    ax.set_ylim([CenterY-xylen/2*1.15,CenterY+xylen/2*1.15])
-        
-    # ax.set_xlabel(r'$\Delta t=%.5f, STEP: %d$' %(h,s_time),fontsize=9)
-
-    dotsize=600/len(Domain) *0.6
-    
-    if dotcolors==1:
-        dotc=Domain
-        dotcmap='twilight_shifted'
-    elif dotcolors==2:
-        dotc=-Domain
-        dotcmap='nipy_spectral'
-    elif dotcolors==0:
-        dotc='tab:blue'
-        dotcmap='nipy_spectral'
+    Xlim,Ylim,xylen = choose_XYlim(P[s_time],np.inf,0)
+    ax.set_xlim(Xlim)
+    ax.set_ylim(Ylim)
+    dotsize,dotc,dotcmap=set_dot(Domain,dotcolors,0.6)
 
     scat=ax.scatter(P[s_time].T[0], P[s_time].T[1],s=dotsize,c=dotc, cmap=dotcmap) #P[0].T[1] = (transpose of P[0])[1]. cmap=따라 컬러 스펙트럼 바뀜
     scat.set_alpha(0.6)
-    # qax=ax.quiver(P[s_time].T[0],P[s_time].T[1],nV[s_time].T[0],nV[s_time].T[1],angles='xy',width=0.001,scale=70/2)
     qax=ax.quiver(P[s_time].T[0],P[s_time].T[1],nV[s_time].T[0],nV[s_time].T[1],angles='xy',linewidth=0.0020,headlength=2,headaxislength=1.8,headwidth=2.3,scale=70/2)
 
     axes=plt.axes()
-    # axes.set_xticks([])
-    # axes.set_yticks([])
     plt.savefig('graph_net%d.%d.%d.-%s-%.3f.pdf' %(nettype[0],nettype[1],nettype[2],trialname,s_time*h),bbox_inches='tight', pad_inches=0.02)
     print("image saved_%d" %s_time)
 
+def choose_xlabel(h,i,xylen,Vimean,V):
+    return (r'$\Delta t=%.5f, step : %d, time =%.5f$' %(h,i,h*i)
+            +'\n'+'(frame_length)=%.3f\n'%xylen+r'$v_0^{ave}=(%.3f,%.3f)$'%(Vimean[0],Vimean[1])
+            +', '+r'$v_t^{ave}=(%.6f,%.6f)$' %(np.mean(V[i,:,0]),np.mean(V[i,:,1])))
 
-
-def _update_plot (i,fig,scat,qax,ax,reddot,reddot2) : #making animationed plot
-
-    global xylen
-
-    ax.set_xlabel(r'$\Delta t=%.5f, step : %d, time =%.5f$' %(h,i,h*i)+'\n'+'(frame_length)=%.3f\n'%xylen+r'$v_0^{ave}=(%.3f,%.3f)$'%(Vimean[0],Vimean[1])+', '+r'$v_t^{ave}=(%.6f,%.6f)$' %(np.mean(V[i,:,0]),np.mean(V[i,:,1])),fontsize=8)
-
-    if limT < i :
-
-        Xmin = np.min(P[i,:,0])
-        Ymin = np.min(P[i,:,1])
-        Xmax = np.max(P[i,:,0])
-        Ymax = np.max(P[i,:,1])
-
-        CenterX = (Xmin+Xmax)/2
-        CenterY = (Ymin+Ymax)/2
-        
-        xylen=np.max(Pdiff[i:])
-        
-        #If I choose the condition more sutiable, then the animation will be fancier
-        if xylen>=10*Pdiff[i] :
-            xylen=Pdiff[i] 
-
-        ax.set_xlim([CenterX-xylen/2*1.15,CenterX+xylen/2*1.15])
-        ax.set_ylim([CenterY-xylen/2*1.15,CenterY+xylen/2*1.15])
-        
-        frame_v=((np.min(P[i+1,:,0])-np.min(P[i,:,0]))/h,(np.min(P[i+1,:,1])-np.min(P[i,:,1]))/h)
-        ax.set_xlabel(r'$\Delta t=%.5f, step:%d, time=%.5f$' %(h,i,h*i)+'\n'+'(frame_length)=%.3f, (frame_v)=(%.3f,%.3f)\n'%(xylen,frame_v[0],frame_v[1])+r'$v_0^{ave}=(%.3f,%.3f)$'%(Vimean[0],Vimean[1])+', '+r'$v_t^{ave}=(%.6f,%.6f)$' %(np.mean(V[i,:,0]),np.mean(V[i,:,1])),fontsize=8)
-        #global 선언이 안되어서 꼬인다는데 이유는 모르겠음. 해주니깐 해결되긴 함
-    
-    scat.set_offsets(P[i])
-    qax.set_offsets(P[i])
-
-    qax.set_UVC(nV[i].T[0],nV[i].T[1])
-    # qax.quiver(PPP[0],PPP[1],VVV[0],VVV[1],angles='xy') -> 이렇게 하면 화살표가 위에 새로 계속 찍힘. 만약 ax.clear() 혹은 .remove() 했으면 달라졌을지도 
-    
-    # print ('Frames:%d' %i)
-    reddot.set_data(i*h,Vnrm[i])
-    reddot2.set_data(i*h,Xbnrm[i])
-    
-    return scat,qax,ax,reddot,reddot2
+def choose_xlabel_2(h,i,xylen,Vimean,V,frame_v):
+    return (r'$\Delta t=%.5f, step:%d, time=%.5f$' %(h,i,h*i)
+            +'\n'+'(frame_length)=%.3f, (frame_v)=(%.3f,%.3f)\n'%(xylen,frame_v[0],frame_v[1])
+            +r'$v_0^{ave}=(%.3f,%.3f)$'%(Vimean[0],Vimean[1])
+            +', '+r'$v_t^{ave}=(%.6f,%.6f)$' %(np.mean(V[i,:,0]),np.mean(V[i,:,1])))
 
 def phiEest(ssq,b,LB): #estimating energy about phi function
     phE=(np.power(1+ssq,1-b)-1)/(1-b)+ssq*LB
     return phE
 
+def makenet(net_type,N):
+    A=np.zeros((N,N))
+    if net_type==0 :
+        A[:,:]=1
+        for i in range(N) :
+            A[i,i]=0
+
+    elif net_type==1 :
+        for i in range(N-1) :
+            A[i,i+1] = 1
+        A[0,1:N]=1
+        A[0:int(N/2)-1,int(N/2)-1]=1
+        A[int(N/2)-1,int(N/2):N]=1
+        A[:N-1,N-1]=1
+        A=A+A.T
+        
+    elif net_type==2 :
+        for i in range(N-1) :
+            A[i,i+1] = 1
+        A=A+A.T
+        
+    elif net_type==3 :
+        if N % 2 != 0 : step=2
+        elif N % 4 == 0 : step=N/2-1
+        else : step=N/2-2
+        for i in range(N) :
+            A[i,int((i+step)%N)]=1
+            A[i,int((i-step)%N)]=1
+            
+    elif net_type==4 :
+        for i in range(N-1) :
+            A[i,i+1] = 1
+        A=A+A.T
+        for i in range(int(N/10)) :
+            A[i*10,:]=1
+            A[:,i*10]=1
+            A[i*10,i*10]=0
+            
+    elif net_type==5 :
+        for i in range(N-1) :
+            A[i,i+1] = 1
+        A[N-1,0]=1
+        A=A+A.T
+
+    return A
+
 def weight(s,b,LB):
     a = np.power(1+s,-b) + LB
     return a
 
-def csmpf(X,V): #Cucker Smale Model with Pattern Formation
+def csmpf(X,V,A,alpha,beta,psLB,phLB,K,M,N): #Cucker Smale Model with Pattern Formation
     K_e=np.zeros((N,2)) 
 
     for i in range(N):
 
-        J= A_ps[i,:] == 1
+        J= A['ps'][i,:] == 1
 
         s=(np.power(X[i][0]-X[:,0],2)+np.power(X[i][1]-X[:,1],2))[J]
         s=np.nan_to_num(s)
@@ -291,9 +234,7 @@ def csmpf(X,V): #Cucker Smale Model with Pattern Formation
         #즉 여기선 n*2 행렬이 있고 거기에서 각각의 행에 곱할 scalar가 ps에 저장되어 있는데,
         #1dimension으로 n짜리 array로는 못하고, n*1 사이즈의 2차원 행렬이어야 함.
 
-        # a/=N
-
-        J= A_ph[i,:] == 1
+        J= A['ph'][i,:] == 1
 
         u=np.array([0.0,0.0])
 
@@ -303,32 +244,24 @@ def csmpf(X,V): #Cucker Smale Model with Pattern Formation
         ph=weight(s,beta,phLB)
         u=np.sum((X[J]-Z[J]-X[i]+Z[i])*np.array([ph]).T,axis=0) * M
 
-        a+=u
-
-        K_e[i]=a
+        K_e[i]=a+u
    
-    K_e=np.nan_to_num(K_e)
+    return np.nan_to_num(K_e)
 
-    return K_e
-
-def brown(V) :
+def brown(V,A,L) :
     W=np.zeros((N,2))
 
     for i in range(N) :
-        J= A_b[i,:]==1
+        J= A['b'][i,:]==1
         W[i]=np.sum((V[J]-V[i]))*L
 
     return W
-
-def dW(dt) :
-    return np.random.normal(0,np.sqrt(dt))
 
 def theta(x):
     a=np.heaviside(x,0)
     return a
 
-def Curve (dom) :
-
+def Curve(dom,jump,curvename) :
     num=N
 
     ## In this kinds of curve equation from Wolfram alpha,
@@ -336,8 +269,7 @@ def Curve (dom) :
     ## Thus there are some points that their components are complex, i.e. not plotted in the R^2 plane,
     ## and we need to inflate the number of the points if we need to get required points in R^2. 
      
-    if jump==1:
-        num*=2 #Actually, it is not accurate, so it should be changed.
+    if jump==1: num*=2 #Actually, it is not accurate, so it should be changed.
 
     t=np.linspace(0,dom,num,endpoint=False)
 
@@ -357,19 +289,14 @@ def Curve (dom) :
         print("error : there is not such curve name")
         quit()
 
-
     Target = np.array([X,Y]).T
 
     if jump==1:
-        
         Jcheck0=np.zeros(num)
         for i in range(num-1) :
             Jcheck0[i]=np.count_nonzero(Target[i+1:] == Target[i])
-
         Jcheck1= Target[:] != [[0,0]]
-
         Jcheck = np.logical_and(Jcheck0[:]==0,Jcheck1[:,0])
-
         Target=Target[Jcheck]
         t=np.linspace(0,dom,Jcheck.sum(),endpoint=False)
         print("Jump check")
@@ -377,373 +304,228 @@ def Curve (dom) :
 
     return Target,t
 
+def pick_rand_points(N,P_range,ext):
+    Pinit=np.random.rand(N,2)*P_range-P_range/2 
+    Pinit+=-np.array(np.mean(Pinit[:],axis=0))+ext
+    return Pinit
 
-if __name__ == '__main__':
-    
-    version=1.8
-
-    # N=int(input("N=?"))
-
-    # alpha=float(input("alpha=?"))
-    # beta=float(input("beta=? (if alpha = beta, input -1)"))
-
-    # if beta==-1.0 :
-    #     beta = alpha
-
-    # ## ein set
-
-    # N=500
-
-    # ## psi(r^2) = (1+r^2)^(-alpha) + psLB, phi(r)=(1+r^2)^(-beta) + phLB
-    # alpha=0.25
-    # beta=alpha
-    # psLB=0.3
-    # phLB=0.1
-
-    # # K=float(input("K=?"))
-    # # M=float(input("M=?"))
-    # # L=float(input("L=?"))
-    # # T=int(input("T=?"))
-
-    # K=0.5
-    # M=7   # L=0.00001 #L=sigma
-    # L=0.00001
-    # T=180 #T : number of steps for solving the DE
-
-    # curvetype=3
-    # nettype=[4,4,0]
-    # PVinitset=1 #whether making or loading the initial data of P,V
-    # fname='_ein'
-    # h=0.025/2 #h=\Delta t ~ dt
-
-    ##pi set
-
-    N=30
-
-    ## psi(r^2) = (1+r^2)^(-alpha) + psLB, phi(r)=(1+r^2)^(-beta) + phLB
-    alpha=0.25
-    beta=alpha
-    psLB=0.31
-    phLB=0.1
-
-    # K=float(input("K=?"))
-    # M=float(input("M=?"))
-    # L=float(input("L=?"))
-    # T=int(input("T=?"))
-
-    K=5
-    M=7   # L=0.00001 #L=sigma
-    L=0.001
-    T=1400 #T : number of steps for solving the DE
-
-    curvetype=1
-    nettype=[3,1,0]
-    PVinitset=1 #whether making or loading the initial data of P,V
-    fname='_pi'
-    h=0.025 #h=\Delta t ~ dt
-
-
-    # making target pattern : Z
-
-    if curvetype==0:
-        curvename='circle'
-        domain=2*np.pi
-
-        jump=0 #i.e. curve is continuos
-
-    elif curvetype==1:
-        curvename='pi'
-        domain=2*np.pi
-
-        jump=0
-
-    elif curvetype==2:
-        curvename='b.simpson'
-        domain=72*np.pi
-
-        jump=1 #i.e. curve is not continous.
-    
-    elif curvetype==3:
-        curvename='einstein'
-        domain=92*np.pi
-
-        jump=1
-
-
-    Z,Domain=Curve(domain) #determining the Z
-
-    ## A : adjacency matrix for the network graph
-
-    zeta=['ps','ph','b']
-
-    for ind in range(3):
-
-        A=np.zeros((N,N))
-        
-        if nettype[ind]==0 :
-            A[:,:]=1
-            for i in range(N) :
-                A[i,i]=0
-
-        elif nettype[ind]==1 :
-            for i in range(N-1) :
-                A[i,i+1] = 1
-
-            A[0,1:N]=1
-            A[0:int(N/2)-1,int(N/2)-1]=1
-            A[int(N/2)-1,int(N/2):N]=1
-            A[:N-1,N-1]=1
-
-            A=A+A.T
-
-        elif nettype[ind]==2 :
-            for i in range(N-1) :
-                A[i,i+1] = 1
-
-            A=A+A.T
-
-        elif nettype[ind]==3 :
-            if N % 2 != 0 :
-                step=2
-            elif N % 4 == 0 :
-                step=N/2-1
-            else :
-                step=N/2-2
-
-            for i in range(N) :
-                A[i,int((i+step)%N)]=1
-                A[i,int((i-step)%N)]=1
-
-        elif nettype[ind]==4 :
-            for i in range(N-1) :
-                A[i,i+1] = 1
-
-            A=A+A.T
-
-            for i in range(int(N/10)) :
-                A[i*10,:]=1
-                A[:,i*10]=1
-                A[i*10,i*10]=0
-
-        elif nettype[ind]==5 :
-            for i in range(N-1) :
-                A[i,i+1] = 1
-
-            A[N-1,0] = 1
-            
-            A=A+A.T
-
-
-
-        globals()['A_{}'.format(zeta[ind])]=np.copy(A)
-   
-
-    ## Setting initial values of P,V
-    ## (positions and velocities of particles, respectively).
-    ## i.e. P=\bx, V=\bv 
-
-    if PVinitset==0:
-        Pinitlen=int((np.max(Z)-np.min(Z)))
-        # Pinitlen=20
-        coeff=0.5
-        # coeff=1.25
-        P_range=Pinitlen*coeff
-        print("P_range = %f" %P_range)
-        Pinit=np.random.rand(N,2)*P_range-P_range/2 
-
-        Pinit-=np.array(np.mean(Pinit[:],axis=0))
-        Pinit+=np.array(np.mean(Z[:],axis=0))
-        print(np.mean(Z[:],axis=0))
-
-        v_range=50
-        v_s=np.random.randint(-10,10,size=2)
-        v_s=np.array([0,0])
-        print("v_s = %.1f,%.1f" %(v_s[0],v_s[1]))
-        Vinit=(np.random.rand(N,2)*v_range)-v_range/2 + v_s #np.array끼리 그냥 곱하면 component 사이의 곱
-        Vimean=np.array(np.mean(Vinit[:],axis=0))
-
-        Vinit-=Vimean
-
+def setPVinit(setting,Z,N) :
+    if setting==0:
+        P_range=int((np.max(Z)-np.min(Z)))*0.5
+        Pinit = pick_rand_points(N,P_range,np.array(np.mean(Z[:],axis=0)))
+        Vinit = pick_rand_points(N,50,np.random.randint(-10,10,size=2)) 
     else :
         print(os.getcwd())
-        Pinit_df=pd.read_csv('./Pinit%s.csv' %fname,delimiter='\t')
-        Vinit_df=pd.read_csv('./Vinit%s.csv' %fname,delimiter='\t')
+        Pinit=(pd.read_csv('./Pinit_%s.csv' %set_name,delimiter='\t')).to_numpy()
+        Vinit=pd.read_csv('./Vinit_%s.csv' %set_name,delimiter='\t').to_numpy()
 
-        Pinit=Pinit_df.to_numpy()
-        Vinit=Vinit_df.to_numpy()
-
-    Xbimean=np.array(np.mean(Pinit[:]-Z[:],axis=0))
-    print("\nbarX_0 mean={}".format(Xbimean))
+    Xbmean=np.array(np.mean(Pinit[:]-Z[:],axis=0))
+    print("\nbarX_0 mean={}".format(Xbmean))
     Vimean=np.array(np.mean(Vinit[:],axis=0))        
     print("\nV_0 mean={}".format(Vimean))
+    
+    return Pinit,Vinit,Xbmean,Vimean
 
-    P=np.array([Pinit])
-    V=np.array([Vinit])
+def set_dBt(setting,h,T) :
+    if setting == 0 : return np.array([np.random.normal(0,np.sqrt(h),T),np.random.randint(0,1,T)*2-1])
+    else : return (pd.read_csv('./dB_once.csv',delimiter='\t')).to_numpy()
 
-    ## Pdiff(t) = max_k=1,2 (max_i,j |(x_t^i)_k-(x_t^j)_k|) : used when plotting
-    Pdiff=np.zeros(T)
+def settings(set_name) :
+    if set_name=='ein' :
+        ## ein set
+        N=500
+
+        ## psi(r^2) = (1+r^2)^(-alpha) + psLB, phi(r)=(1+r^2)^(-beta) + phLB
+        alpha=0.25
+        beta=alpha
+        psLB=0.3
+        phLB=0.1
+        
+        K=0.5
+        M=7   # L=0.00001 #L=sigma
+        L=0.00001
+        T=180 #T : number of steps for solving the DE
+
+        curvetype=3
+        nettype=[4,4,0]
+        h=0.025/2 #h=\Delta t ~ dt
+
+    elif set_name=='pi' :
+        ##pi set
+        N=30
+        ## psi(r^2) = (1+r^2)^(-alpha) + psLB, phi(r)=(1+r^2)^(-beta) + phLB
+        alpha=0.25
+        beta=alpha
+        psLB=0.31
+        phLB=0.1
+
+        K=5
+        M=7   # L=0.00001 #L=sigma
+        L=0.001
+        T=1400 #T : number of steps for solving the DE
+
+        curvetype=1
+        nettype=[3,1,0]
+        h=0.025 #h=\Delta t ~ dt
+    
+    return N,alpha,beta,psLB,phLB,K,M,L,T,curvetype,nettype,h
+
+def make_variables(Pinit,Vinit,T,A,beta,phLB,M,Z):
+    P,V=np.array([Pinit]),np.array([Vinit])
+    Pdiff,Vnrm,Xbnrm,phE=np.zeros(T),np.zeros(T),np.zeros(T),np.zeros(T)
+    # Pdiff(t) = max_k=1,2 (max_i,j |(x_t^i)_k-(x_t^j)_k|) : used when plotting
     Pdiff[0]=max(np.max(Pinit[:,0])-np.min(Pinit[:,0]),np.max(Pinit[:,1])-np.min(Pinit[:,1]))
-
-    # print(P[0])
-    # print(V[0])
-
-    #Vnrm(t) = Vnrm = sum_i |v_t^i|^2
-    #nV(t) = normalized V -> direction of each v^i vectors
-    s=np.sqrt(np.power(Vinit[:,0],2)+np.power(Vinit[:,1],2))
+    Vnrm[0],Xbnrm[0]=calc_Vnrm(Vinit),calc_Xbnrm(Pinit,Z)
+    nV=np.array([calc_nV(Vinit)])
+    phE[0]=calc_phE(N,Pinit,Z,A,M,beta,phLB)
     
-    Vnrm=np.zeros(T)
-    Vnrm[0]=np.sum(np.power(s,2))
-    
-    ## when calculating nV, s shouldn't be 0
-    J = s[:]==0
-    s[J] = 1
+    return P,V,Pdiff,Vnrm,nV,Xbnrm,phE
 
+def make_curve(curvetype):
+    #jump is 1 iff curve is not continuos
+    if curvetype==0: curvename,domain,jump = 'circle',2*np.pi,0 #i.e. curve is continuos
+    elif curvetype==1: curvename,domain,jump = 'pi',2*np.pi,0
+    elif curvetype==2: curvename,domain,jump = 'b.simpson',72*np.pi,1
+    elif curvetype==3:curvename,domain,jump = 'einstein',92*np.pi,1
+    
+    return Curve(domain,jump,curvename) #determining the Z
+
+def stoc_RK_csmpf(Pnow,Vnow,dBt,S,h,A,K,M,L,alpha,beta,psLB,phLB,N):
+    ## calculating P[t], V[t]
+    ## P,V_t = P,V_t-1 + (K_1 /2 +K_2 /2)
+    ## K_1 = h * csmpf (P,V_t-1)+ (dBt-1-S*sqrt(h)) * Br(P,V_t-1)
+    ## K_2 = h * csmpf (P,V_t-1 + K_1)+ (dBt-1+S*sqrt(h)) * Br(P,V_t-1 + K_1)
+    ## https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_method_(SDE)
+    interm = csmpf(Pnow,Vnow,A,alpha,beta,psLB,phLB,K,M,N)
+    K_1=np.array([Vnow,interm])*h+np.array([np.zeros((N,2)),(dBt-S*np.sqrt(h))*brown(Vnow,A,L)])
+    interm = csmpf(Pnow+K_1[0],Vnow+K_1[1],A,alpha,beta,psLB,phLB,K,M,N)
+    K_2=np.array([Vnow+K_1[1],interm])*h+np.array([np.zeros((N,2)),(dBt+S*np.sqrt(h))*brown(Vnow+K_1[1],A,L)])
+    
+    Pnext,Vnext=np.copy(Pnow),np.copy(Vnow)
+    Pnext+=(K_1[0]+K_2[0])/2
+    Vnext+=(K_1[1]+K_2[1])/2
+    return np.nan_to_num(Pnext),np.nan_to_num(Vnext)
+
+def calc_Vnrm(Vnext):
+    #Vnrm(t) = Vnrm = sum_i |v_t^i - v^ave|^2
+    s=np.nan_to_num(np.power(Vnext[:,0],2)+np.power(Vnext[:,1],2))
+    Vmean=np.array(np.mean(Vnext[:],axis=0))        
+    return np.sum(s)-N*np.sum(np.power(Vmean,2))
+
+def calc_nV(Vnext):
+    #nV(t) = normalized V -> direction of each v^i vectors    
+    s=np.sqrt(np.nan_to_num(np.power(Vnext[:,0],2)+np.power(Vnext[:,1],2)))
     arrow_len=2-10/(np.sqrt(s)+5)
+    s[s[:]==0] = 1
+    nVnext=np.copy(Vnext)/np.array([s]).T*np.array([arrow_len]).T
+    return np.nan_to_num(nVnext)
 
-    nVinit=np.copy(Vinit)/np.array([s]).T * np.array([arrow_len]).T
-    nV=np.array([nVinit])
-    
-    #Xbnrm(t) = sum_i,j |x*_i-x*_j|^2 = 2N sum_i |x*_i|^2 - 2|sum_i x*_i|^2 = \sum_{i,j} |\bar{x}_t^i-\bar{x}_t^j|^2
+def calc_Xbnrm(Pnext,Z):
+    #Xbnrm(t) = sum_i |x*_i-x*_ave|^2 = \sum_{i} |\bar{x}_t^i-\bar{x}_t^ave|^2
     #p.s. when v^ave is not 0, then \sum_i |\bar{x^i}|^2 is increasing in the end. 
-    Xbnrm=np.zeros(T)
-    Xbnrm[0]=np.power(np.max(np.power(Pinit[:,0]-Z[:,0],2)+np.power(Pinit[:,1]-Z[:,1],2)),1/2)
+    Xbmean=np.array(np.mean(Pnext[:]-Z[:],axis=0))
+    return np.sum(np.power(Pnext[:,0]-Z[:,0]-Xbmean[0],2)+np.power(Pnext[:,1]-Z[:,1]-Xbmean[1],2))
 
+def calc_phE(N,Pnext,Z,A,M,beta,phLB):
     #phE(t)=\sum_{i,j\in\calE} \int_0^|\bar{x}_t^{ij}|^2 \phi(r)dr
-    phE=np.zeros(T)
+    phE = 0
     for i in range(N):
-        J = A_ph[i,:]==1
-        ssq=(np.power(P[0,i,0]-Z[i,0]-P[0,:,0]+Z[:,0],2)+np.power(P[0,i,1]-Z[i,1]-P[0,:,1]+Z[:,1],2))[J]
+        J = A['ph'][i,:]==1
+        ssq=(np.power(Pnext[i,0]-Z[i,0]-Pnext[:,0]+Z[:,0],2)+np.power(Pnext[i,1]-Z[i,1]-Pnext[:,1]+Z[:,1],2))[J]
+        phE+=np.sum(phiEest(ssq,beta,phLB))
+    return M/2 * phE    
 
-        phE[0]+=np.sum(phiEest(ssq,beta,phLB))
-
-    phE[0]*=M/2
-
+def solve_SDE(T,Pinit,Vinit,dBset,Z,A,h,K,M,L,alpha,beta,psLB,phLB,N):
+    ## Making variables : P, V, and Pdiff, Vnrm, nV, Xbnrm, phE, calH
+    P,V,Pdiff,Vnrm,nV,Xbnrm,phE=make_variables(Pinit,Vinit,T,A,beta,phLB,M,Z)
     #dB : saving values of dBt
-    dB=np.zeros(T)
-
-    ## Solving DE
-
+    dB = set_dBt(dBset,h,T)
     for t in range(1,T):
-        # print ("start %dth loop" %t)
-        
-        Pnow=np.copy(P[t-1])
-        Vnow=np.copy(V[t-1])
-
         ## Stochastic Runge Kutta.
-
-        ## calculating P[t], V[t]
-        ## P,V_t = P,V_t-1 + (K_1 /2 +K_2 /2)
-        ## K_1 = h * csmpf (P,V_t-1)+ (dBt-1-S*sqrt(h)) * Br(P,V_t-1)
-        ## K_2 = h * csmpf (P,V_t-1 + K_1)+ (dBt-1+S*sqrt(h)) * Br(P,V_t-1 + K_1)
-        ## https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_method_(SDE)
-
-        dBt=dW(h)
-
-        S=np.random.randint(0,1)*2-1
-
-        K_1=np.array([Vnow,csmpf(Pnow,Vnow)])*h+np.array([np.zeros((N,2)),(dBt-S*np.sqrt(h))*brown(Vnow)])
-        K_2=np.array([Vnow+K_1[1],csmpf(Pnow+K_1[0],Vnow+K_1[1])])*h+np.array([np.zeros((N,2)),(dBt+S*np.sqrt(h))*brown(Vnow+K_1[1])])
-
-        Pnext=np.copy(Pnow)
-        Vnext=np.copy(Vnow)
-
-        Pnext+=(K_1[0]+K_2[0])/2
-        Vnext+=(K_1[1]+K_2[1])/2
-
-        Pnext=np.nan_to_num(Pnext)
-        Vnext=np.nan_to_num(Vnext)
-
-        ## calculating Vnrm and nV. 
-        s=np.power(Vnext[:,0],2)+np.power(Vnext[:,1],2)
-        s=np.nan_to_num(s)
-
-        Vnrm[t]=np.sum(s)
-
-        s=np.sqrt(s)
-        arrow_len=2-10/(np.sqrt(s)+5)
-        
-        J = s[:]==0
-        s[J] = 1
-
-        nVnext=np.copy(Vnext)/np.array([s]).T*np.array([arrow_len]).T
-        nVnext=np.nan_to_num(nVnext)
+        Pnext,Vnext = stoc_RK_csmpf(P[t-1],V[t-1],dB[0,t],dB[1,t],h,A,K,M,L,alpha,beta,psLB,phLB,N)
+        ## calculating Vnrm and nV.
+        Vnrm[t],nVnext = calc_Vnrm(Vnext),calc_nV(Vnext)
 
         ## appending to large array. (P,V,nV,dB)
         P=np.append(P,np.array([Pnext]),axis=0)
         V=np.append(V,np.array([Vnext]),axis=0)
         nV=np.append(nV,np.array([nVnext]),axis=0)
-        dB[t]=dBt    
         
         ## calculating and appending other indicators (Pdiff, Xbnrm, phE)
         Pdiff[t]=max(np.max(Pnext[:,0])-np.min(Pnext[:,0]),np.max(Pnext[:,1])-np.min(Pnext[:,1]))
-        Xbnrm[t]=np.power(np.max(np.power(Pnext[:,0]-Z[:,0],2)+np.power(Pnext[:,1]-Z[:,1],2)),1/2)
+        Xbnrm[t],phE[t]=calc_Xbnrm(Pnext,Z),calc_phE(N,Pnext,Z,A,M,beta,phLB)
         
-        for i in range(N):
-            J = A_ph[i,:]==1
-            ssq=(np.power(P[t,i,0]-Z[i,0]-P[t,:,0]+Z[:,0],2)+np.power(P[t,i,1]-Z[i,1]-P[t,:,1]+Z[:,1],2))[J]
-
-            phE[t]+=np.sum(phiEest(ssq,beta,phLB))
-
-        phE[t]*=M/2
-
         ## checking progress 
-        if t % 100 ==0 :
-            print("end %d" %t)
+        if t % 100 ==0 : print("end %d" %t)
+    
+    return P,V,nV,Vnrm,Pdiff,Xbnrm,phE
 
-
-    # print ("end")
-    print (Pnow)
-    print (Vnow)
-    print (Vimean)
-    print (Z)
-
-    ## Check E0>=phE+Vnrm
-    E0=Vnrm[0]+phE[0]
-    Jc = E0 < phE[:]+Vnrm[:]
-    print("over : %d" %np.sum(Jc))
-    print (np.array(range(T))[Jc])
-    Jc = phE[:] < 0
-    print("phE < 0 : %d" %np.sum(Jc))
-    print (np.array(range(T))[Jc])
-
-    for i in range(10):
-        print(Vnrm[i]+phE[i])
-
-    ## Ploting
-    makeplot()
-
-    ##saving the animation
-    save=(input("Do you want to save? Yes=else, No=0 "))
-    trialname='test'
-
-    if save!='0' :
-        trialname=input("trial name=?")
-        savename='scs-em.v.%.1f-simu-%s-k%.2fm%.2fsigma%.5f-psLB%.3fphLB%.3f-h%.5f-net%d.%d.%d.-%s.mp4' %(version,curvename,K,M,L,psLB,phLB,h,nettype[0],nettype[1],nettype[2],trialname)
-        print("Saving...")
-        if T > 900 :
-            fps = 15
-        else :
-            fps = 5
-        ani.save(savename,dpi=300,fps=fps) #fps 60은 넘지 않도록
-
-    print("DONE")
-
-    ## Save snapshot
+def make_snapshot(P,nV,limT,T,snapshot_num=6):
     print("Save Snapshot")
-    snapshot_num=6
     snapshot_time=np.zeros(snapshot_num)
-    # for i in range(snapshot_num):
-    #     snapshot_time[i]=input("i-th:" %i)
-
     snapshot_time=[0,int(limT*0.25),int(limT*0.6),limT,min(int(limT*1.8),int(limT*0.4+T*0.6)),max(int(limT*1.8),int(limT*0.4+T*0.6)),T-1]
     # snapshot_time=[0,10,40,100,120,140,160,170]
-
-    for i in snapshot_time:
-        savesnapshot(i)
-    
+    for s_time in snapshot_time:
+        save_snapshot(P,nV,s_time,0,nettype,trialname)
     print("DONE")
 
+if __name__ == '__main__':
+    version=2.0
+    set_name='pi'
+    #TODO : integrate variables to dict
+    #K,M,L : coeff , alpha, beta, psLB, phLB : weight
+    N,alpha,beta,psLB,phLB,K,M,L,T,curvetype,nettype,h = settings(set_name)
+    # making target pattern : Z
+    Z,Domain = make_curve(curvetype)
+    ## A : adjacency matrix for the network graph
+    zeta=['ps','ph','b']
+    A={ name : makenet(net,N)
+        for net,name in zip(nettype,zeta) }
+    ## Setting initial values of P,V
+    ## (positions and velocities of particles, respectively). i.e. P=\bx, V=\bv 
+    PVinitset, dBset = 0, 0 # whether making or loading the initial data of P,V and dB
+    Pinit,Vinit,Xbmean,Vimean=setPVinit(PVinitset,Z,N)
+    ## Solving DE
+    P,V,nV,Vnrm,Pdiff,Xbnrm,phE = solve_SDE(T,Pinit,Vinit,dBset,Z,A,h,K,M,L,alpha,beta,psLB,phLB,N)
+    E0=Vnrm[0]+phE[0]  
+    # print ("end")
+    def check_end_value():
+        print (P[-1])
+        print (V[-1])
+        print (Vimean)
+        print (Z)
+    def check_E_decrease():
+        ## Check E0>=phE+Vnrm
+        Jc = E0 < phE[:]+Vnrm[:]
+        print("over : %d" %np.sum(Jc))
+        print (np.array(range(T))[Jc])
+        Jc = phE[:] < 0
+        print("phE < 0 : %d" %np.sum(Jc))
+        print (np.array(range(T))[Jc])
 
+        for i in range(10):
+            print(Vnrm[i]+phE[i])
+
+#    check_end_value()
+#    check_E_decrease()
+    ## Ploting
+    fig,ani = makeplot(Pdiff,Domain,P,nV,Vnrm,Xbnrm,phE,h,T,Vimean,dotcolors=0,graphcut=0)
+    save=(input("Do you want to save? Yes=else, No=0 "))
+    trialname='test'
+    def save_animation(ani):
+        ##saving the animation
+    
+        if save!='0' :
+            trialname=input("trial name=?")
+            savename='scs-em.v.%.1f-simu-%s-k%.2fm%.2fsigma%.5f-psLB%.3fphLB%.3f-h%.5f-net%d.%d.%d.-%s.mp4' %(version,set_name,K,M,L,psLB,phLB,h,nettype[0],nettype[1],nettype[2],trialname)
+            print("Saving...")
+            if T > 900 : fps = 15
+            else : fps = 5
+            ani.save(savename,dpi=300,fps=fps) #fps 60은 넘지 않도록
+
+        print("DONE")
+    ## Save snapshot
+    make_snapshot(P,nV,np.argmax(Pdiff),T,snapshot_num=6)
 
 #sine 그래프일때는 fluctuation 하는 진폭이 logscale로 봤을때 거의 일정했음. 그리고 빙빙 돌면서 수렴한다는 느낌이었음.
 #K, M을 작게하고(각각 1) 이렇게 멀리 떨어뜨려놔도 초기 속도차이 10^2~10^3 스케일까지는 뜀
