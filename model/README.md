@@ -14,7 +14,7 @@ The first one, the Cucker-Smale model, describes movement of a particle system, 
 \begin{equation}
     \begin{array}
         \frac{\text{d}}{\text{d}t}x_t^i & = & v_t^i, \quad i=1,\cdots,N, \quad t>0 \\
-        \frac{\text{d}}{\text{d}t}v_t^i & = &  K \sum_{j=1}^{N}\psi (\vert x_t^j-x_t^i \vert)(v_t^j-v_t^i)
+        \frac{\text{d}}{\text{d}t}v_t^i & = &  K \sum_{j=1}^{N} \psi (\vert x_t^j-x_t^i \vert)(v_t^j-v_t^i)\\
     \end{array}
 \end{equation}
 ```
