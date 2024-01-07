@@ -1,5 +1,24 @@
 ## Model
-In the codes, we deal with 4 models; Cucker-Smale model, the model introduced in [[3]][(CKPP19)] and its extension for more general networks, and the model introduced in [[2]][(O21)]. The first three of them are systems of ordinary differential equation and the last one is a system of stochastic differential equation.
+In the codes, we deal with 4 models; Cucker-Smale model[[1]][(CS07)], the model introduced in [[3]][(CKPP19)] and its extension for more general networks, and the model introduced in [[2]][(O21)]. The first three of them are systems of ordinary differential equation and the last one is a system of stochastic differential equation.
+
+The first one, the Cucker-Smale model, describes movement of a particle system, all of them converges to same velocity. The model is written as 
+
+\begin{equation}
+    \begin{array}
+        \frac{\text{d}}{\text{d}t}x_t^i & = & v_t^i, \quad i=1,\cdots,N, \quad t>0 \\
+        \frac{\text{d}}{\text{d}t}v_t^i & = &  K \sum_{j=1}^{N}\psi (\vert x_t^j-x_t^i \vert)(v_t^j-v_t^i)
+    \end{array}
+\end{equation}
+
+```math 
+\begin{equation}
+    \begin{array}
+        \frac{\text{d}}{\text{d}t}x_t^i & = & v_t^i, \quad i=1,\cdots,N, \quad t>0 \\
+        \frac{\text{d}}{\text{d}t}v_t^i & = &  K \sum_{j=1}^{N}\psi (\vert x_t^j-x_t^i \vert)(v_t^j-v_t^i)
+    \end{array}
+\end{equation}
+```
+
 
 $a_i$
 
@@ -10,6 +29,7 @@ void main
 ```math
 a_i
 ```
+
 
 ## Bibliography
 
