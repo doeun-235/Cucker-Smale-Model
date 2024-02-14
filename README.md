@@ -27,18 +27,18 @@ On my git-hub page, instructions are focused on numerical and coding parts, so i
 <center>
   <figure align="center">
     <img src= "/figure/csm-ode45-simu-final.gif" width="93%">
-    <figcaption>Fig. 1</figcaption>
+    <figcaption>Fig. 1 Simulation for Cucker-Smale model</figcaption>
   </figure>
 </center>
 
 <p align="center">
   <img src= "/figure/thesis_figure/einstein/graph_ein-3.png" width="80%">
-  <figcaption>Fig. 2</figcaption>
+  <figcaption>Fig. 2 The average of 100 realizations for the energies, which shows movements of the SDE model converge. </figcaption>
 </p>
 
 <p align="center">
   <img src= "/figure/thesis_figure/einstein/scs-em.v.1.8-simu-einstein.gif" width="100%">
-  <figcaption>Fig. 3</figcaption>
+  <figcaption>Fig. 3 A simulation for an Einstien's face image pattern model. </figcaption>
 </p>
 
 
