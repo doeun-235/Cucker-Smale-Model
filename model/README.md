@@ -1,5 +1,5 @@
 ## Model
-In the codes, we deal with 4 models; Cucker-Smale model, the model introduced in [[3]][(CKPP19)] and its extension for more general networks, and the model introduced in [[2]][(O21)]. The first three of them are systems of ordinary differential equation and the last one is a system of stochastic differential equation.
+In the codes, we deal with 4 models; Cucker-Smale model in [[1]][(CS07)], the model introduced and its extensions for more general networks in [[3]][(CKPP19)], and the model introduced in [[2]][(O21)]. The first three of them are systems of ordinary differential equation and the last one is a system of stochastic differential equation.
 
 For 3 ODE models, I used Runge-Kutta 4th method, well-known as 'ode45' in MATLAB. I simulated the SDE model, the main model of my thesis, with an improved Euler-Maruyama method proposed in [[4]][(R12)]. I coded them with NumPy.  
 
