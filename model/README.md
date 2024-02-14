@@ -26,4 +26,4 @@ MIT
 [(CS07)]: https://ieeexplore.ieee.org/document/4200853 "CS07"
 [(O21)]: http://www.riss.kr/link?id=T15771814 "O21"
 [(CKPP19)]: https://arxiv.org/abs/1807.05177 "CKPP19"
-[(R12)] : https://arxiv.org/abs/1210.0933 "R12"
+[(R12)]: https://arxiv.org/abs/1210.0933 "R12"
