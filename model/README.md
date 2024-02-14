@@ -3,6 +3,8 @@ In the codes, we deal with 4 models; Cucker-Smale model, the model introduced in
 
 For 3 ODE models, I used Runge-Kutta 4th method, well-known as 'ode45' in MATLAB. I simulated the SDE model, the main model of my thesis, with an improved Euler-Maruyama method proposed in [[4]][(R12)]. I coded them with NumPy.  
 
+There are two types of codes in a directory "SDE", which has a suffix '-average' in a name of it or not. Codes without a suffix '-average' simulate a realization. The other type of codes simulates several realizations with fixed initial values, and give us indices showing a convergence of the SDE model using Matplotlib plots.
+
 ## Bibliography
 
 1. [CS07][(CS07)] : Felipe Cucker and Steve Smale. Emergent behavior in flocks. IEEE Transactions
